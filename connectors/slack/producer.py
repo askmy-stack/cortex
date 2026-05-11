@@ -11,9 +11,8 @@ Topic: cortex.raw.slack.messages
 
 from __future__ import annotations
 
-import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import structlog
@@ -99,9 +98,9 @@ def normalise_slack_event(
 
     # Parse Slack's UNIX timestamp string
     try:
-        timestamp = datetime.utcfromtimestamp(float(ts)) if ts else datetime.utcnow()
+        timestamp = datetime.fromtimestamp(float(ts), tz=timezone.utc) if ts else datetime.now(timezone.utc)
     except (ValueError, TypeError):
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
     author = event.get("user") or event.get("username") or "unknown"
     channel = event.get("channel", "unknown")

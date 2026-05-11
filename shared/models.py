@@ -10,15 +10,15 @@ Architecture: Layer 1 → Layer 2 contract.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def _utcnow() -> datetime:
-    """Return current UTC datetime."""
-    return datetime.utcnow()
+    """Return current UTC datetime (timezone-aware)."""
+    return datetime.now(timezone.utc)
 
 
 def _uuid4() -> str:
@@ -63,7 +63,7 @@ class RawEvent(BaseModel):
         default_factory=_utcnow, description="When Cortex received this event — UTC"
     )
 
-    model_config = {"json_encoders": {datetime: lambda v: v.isoformat()}}
+    model_config = ConfigDict()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -175,6 +175,8 @@ class DecisionEvent(BaseModel):
 
     extracted_at: datetime = Field(default_factory=_utcnow)
 
+    model_config = ConfigDict()
+
     @field_validator("extraction_confidence")
     @classmethod
     def validate_confidence_threshold(cls, v: float) -> float:
@@ -184,8 +186,6 @@ class DecisionEvent(BaseModel):
         The validator does not raise — it allows the caller to apply thresholds.
         """
         return v
-
-    model_config = {"json_encoders": {datetime: lambda v: v.isoformat()}}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
