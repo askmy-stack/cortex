@@ -273,6 +273,21 @@ services:
   # CORTEX API (FastAPI — Phase 3+)
   # ─────────────────────────────────────────────────────────────────────────────
 
+  pipeline-worker:
+    build:
+      context: .
+      dockerfile: pipeline/Dockerfile
+    container_name: cortex-pipeline-worker
+    restart: unless-stopped
+    networks: [cortex]
+    env_file: .env
+    depends_on:
+      kafka:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    profiles: ["api"]
+
   api:
     build:
       context: .
@@ -327,7 +342,7 @@ services:
     restart: unless-stopped
     networks: [cortex]
     ports:
-      - "3000:3000"
+      - "3000:80"
     env_file: .env
     depends_on:
       api:

@@ -65,7 +65,16 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["connectors*", "extraction*", "scoring*", "graph*", "memory*", "intelligence*", "api*"]
+include = [
+    "connectors*",
+    "extraction*",
+    "scoring*",
+    "graph*",
+    "memory*",
+    "intelligence*",
+    "api*",
+    "pipeline*",
+]
 
 [tool.ruff]
 target-version = "py311"

@@ -12,11 +12,11 @@ Topic: cortex.raw.slack.messages
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
-from confluent_kafka import Producer, KafkaException
+from confluent_kafka import KafkaException, Producer
 from pydantic import ValidationError
 
 from shared.models import RawEvent
@@ -98,9 +98,9 @@ def normalise_slack_event(
 
     # Parse Slack's UNIX timestamp string
     try:
-        timestamp = datetime.fromtimestamp(float(ts), tz=timezone.utc) if ts else datetime.now(timezone.utc)
+        timestamp = datetime.fromtimestamp(float(ts), tz=UTC) if ts else datetime.now(UTC)
     except (ValueError, TypeError):
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
     author = event.get("user") or event.get("username") or "unknown"
     channel = event.get("channel", "unknown")
@@ -184,7 +184,7 @@ class SlackKafkaProducer:
             KafkaException: If the message cannot be enqueued.
         """
         payload = raw_event.model_dump_json().encode("utf-8")
-        key = f"{raw_event.workspace_id}:{raw_event.source_id}".encode("utf-8")
+        key = f"{raw_event.workspace_id}:{raw_event.source_id}".encode()
 
         try:
             self._producer.produce(

@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 import structlog
-from neo4j import GraphDatabase, Driver
+from neo4j import Driver, GraphDatabase
 
 log = structlog.get_logger(__name__)
 
