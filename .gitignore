@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Node / TypeScript
+node_modules/
+dist/
+*.js.map
+*.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# Docker
+*.log
+
+# Infrastructure
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!terraform.tfvars.example
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Data / secrets
+*.pem
+*.key
+*.p12
+secrets/
+
+# Misc
+.DS_Store
+Thumbs.db
+*.bak

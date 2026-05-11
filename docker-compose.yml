@@ -1,0 +1,335 @@
+version: "3.9"
+
+# Cortex — Organizational Memory Operating System
+# Local development stack — all services on a single Docker network
+
+networks:
+  cortex:
+    driver: bridge
+
+volumes:
+  zookeeper_data:
+  kafka_data:
+  neo4j_data:
+  neo4j_logs:
+  postgres_data:
+  timescaledb_data:
+  qdrant_data:
+  redis_data:
+  mlflow_data:
+  prometheus_data:
+  grafana_data:
+
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # KAFKA (event bus — single bus for all inter-service communication)
+  # Decision: D-001 — Kafka as single event bus (no point-to-point HTTP)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: cortex-zookeeper
+    restart: unless-stopped
+    networks: [cortex]
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: cortex-kafka
+    restart: unless-stopped
+    networks: [cortex]
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: cortex-kafka-ui
+    restart: unless-stopped
+    networks: [cortex]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: cortex-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # NEO4J (knowledge graph — structural + causal memory)
+  # Decision: D-002 — Neo4j as structural memory store
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  neo4j:
+    image: neo4j:5.20-community
+    container_name: cortex-neo4j
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-cortex_local}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 2g
+      NEO4J_dbms_memory_pagecache_size: 512m
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./graph/migrations:/migrations
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "${NEO4J_USER:-neo4j}", "-p", "${NEO4J_PASSWORD:-cortex_local}", "RETURN 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # POSTGRESQL (org config — workspaces, connectors, users, audit log)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: cortex-postgres
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cortex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cortex_local}
+      POSTGRES_DB: ${POSTGRES_DB:-cortex}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cortex} -d ${POSTGRES_DB:-cortex}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # TIMESCALEDB (episodic memory — raw events, scores, query logs)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: cortex-timescaledb
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ${TIMESCALE_USER:-cortex}
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD:-cortex_local}
+      POSTGRES_DB: ${TIMESCALE_DB:-cortex_events}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TIMESCALE_USER:-cortex} -d ${TIMESCALE_DB:-cortex_events}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # QDRANT (semantic memory — decision embeddings, vector search)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  qdrant:
+    image: qdrant/qdrant:v1.9.2
+    container_name: cortex-qdrant
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # REDIS (hot cache — <50ms retrieval for live agents)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: cortex-redis
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-cortex_local} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-cortex_local}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # MLFLOW (ML experiment tracking — extractor, scorer versions)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.13.0
+    container_name: cortex-mlflow
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "5000:5000"
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlflow/artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # OBSERVABILITY (Prometheus + Grafana)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: cortex-prometheus
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    volumes:
+      - ./infrastructure/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: cortex-grafana
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-cortex_local}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/docker/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CORTEX API (FastAPI — Phase 3+)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: cortex-api
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+    profiles: ["api"]
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CORTEX MCP SERVER (TypeScript — Phase 3+)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  mcp-server:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    container_name: cortex-mcp
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "8001:8001"
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_started
+    profiles: ["api"]
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CORTEX FRONTEND (React — Phase 6+)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cortex-frontend
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "3000:3000"
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_started
+    profiles: ["frontend"]
