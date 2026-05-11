@@ -11,7 +11,7 @@ Tests cover:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -47,7 +47,7 @@ def _make_raw_event(content: str, source: str = "slack") -> RawEvent:
         content=content,
         author="U12345",
         channel="C-engineering",
-        timestamp=datetime(2026, 5, 11, 12, 0, 0),
+        timestamp=datetime(2026, 5, 11, 12, 0, 0, tzinfo=timezone.utc),
     )
 
 
