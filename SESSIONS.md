@@ -119,6 +119,55 @@
 4. First extraction test: run 10 real Slack messages through GPT-4o → verify decision event schema
 5. Validate Neo4j schema against real extracted events — adjust before writing graph loader
 
+---
+
+## Session 1 — 2026-05-11
+**Duration:** ~3h
+**Phase:** Phase 1 — Infrastructure + Slack connector + Decision extractor
+
+### Built
+
+- Renamed `CORTEX_*.md` → canonical doc names (`README.md`, `CLAUDE.md`, etc.)
+- `.gitignore` — Python, Node, Docker, Terraform, secrets
+- `.env.example` — all 30+ environment variables documented
+- `pyproject.toml` — full Python dependency set, ruff, mypy, pytest config
+- `docker-compose.yml` — 10 services: Zookeeper, Kafka, Kafka-UI, Neo4j 5, PostgreSQL 15, TimescaleDB, Qdrant v1.9, Redis 7, MLflow, Prometheus, Grafana. API/MCP/Frontend behind Docker profiles.
+- `infrastructure/docker/prometheus.yml` — Prometheus scrape config
+- `infrastructure/docker/grafana/provisioning/` — Grafana datasource provisioning
+- `shared/models.py` — RawEvent, DecisionEvent, Provenance Pydantic v2 schemas. Threshold constants.
+- `connectors/slack/producer.py` — normalise_slack_event(), SlackKafkaProducer, SlackConnector
+- `extraction/decision_extractor.py` — DecisionExtractor with GPT-4o/Ollama dual backend, content-hash cache
+- `graph/migrations/V001–V005` — full Neo4j schema (constraints, RBAC, temporal edges, outcome nodes, coverage indices)
+- `graph/migrate.py` — idempotent migration runner
+- `tests/connectors/test_slack_producer.py` — 30 tests
+- `tests/extraction/test_decision_extractor.py` — 34 tests (20 message samples)
+- Git repository initialised: main → dev → feature/phase-1-infrastructure → merged to dev
+
+### State at end
+- 64 tests passing, 0 warnings, 0 failures
+- All Phase 1 code deliverables complete
+- No Docker services running (infrastructure not started yet — Slack app tokens needed)
+- Neo4j schema not yet applied (requires running Neo4j container)
+
+### Decisions made
+- P-001 resolved: TypeScript for MCP server (already in architecture spec)
+- Using timezone-aware datetimes throughout (Python 3.12+ deprecation avoided)
+
+### Blockers
+- Slack app not yet created (need OAuth tokens for live connector test)
+- Ollama must be running locally for dev extraction tests (non-mocked path)
+
+### Mistakes found
+- `pyproject.toml` had incorrect build backend (`setuptools.backends.legacy:build` → `setuptools.build_meta`)
+- `json` import left in `connectors/slack/producer.py` — removed
+
+### Next session starts with
+1. `scripts/connect_slack.py` — OAuth setup helper
+2. `connectors/github/producer.py` — GitHub webhook connector (Phase 2)
+3. `connectors/jira/producer.py` — Jira connector (Phase 2)
+4. `graph/writer.py` — DecisionEvent → Neo4j write layer
+5. `api/main.py` — FastAPI skeleton with /health endpoint (Phase 3 prep)
+
 [OWNER NOTES]
 - Cortex emerged as the second major portfolio project alongside Meridian
 - Core insight: the market gap between memory systems (Mem0, Zep) and enterprise search (Glean, Dust) is exactly where Cortex sits — confirmed by Foundation Capital context graph thesis
