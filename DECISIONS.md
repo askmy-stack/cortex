@@ -25,7 +25,7 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ### 2026-05-11 — Build Phase 1: Core infrastructure + Slack connector
 Priority: HIGH
-Status: OPEN
+Status: DONE — Session 1 (2026-05-11)
 Detail:
 - Write `docker-compose.yml`: Kafka, Zookeeper, Neo4j 5, TimescaleDB, Qdrant, Redis, MLflow, Prometheus, Grafana
 - Port map: Neo4j 7474/7687, Kafka 9092, Redis 6379, Qdrant 6333, API 8000, Frontend 3000, Grafana 3001
@@ -212,7 +212,7 @@ access_policy: {
 
 | # | Decision needed | Options | Deadline | Status |
 |---|---|---|---|---|
-| P-001 | MCP server language | TypeScript (MCP SDK native) / Python (FastMCP) | Before Phase 3 | Open |
+| P-001 | MCP server language | TypeScript (MCP SDK native) / Python (FastMCP) | Before Phase 3 | **RESOLVED: TypeScript** |
 | P-002 | Local Slack message storage for testing | Real Slack workspace / Slack test fixture files | Before Phase 1 | Open |
 | P-003 | Neo4j hosting for production | Neo4j AuraDB free tier / Self-hosted EC2 | Before Phase 7 | Open |
 | P-004 | Dashboard visualization library | D3.js (full control) / React Flow (faster) | Before Phase 6 | Open |
