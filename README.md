@@ -134,8 +134,12 @@ cd cortex
 cp .env.example .env
 # Add: SLACK_BOT_TOKEN, GITHUB_TOKEN, OPENAI_API_KEY (or use local Ollama)
 
-# Run
-docker-compose up -d
+# Run core infra (Kafka, Neo4j, Redis, etc.)
+docker compose up -d
+
+# Optional: API + pipeline worker + MCP + dashboard
+docker compose --profile api up -d
+docker compose --profile frontend up -d
 
 # Connect your first tool
 python scripts/connect_slack.py --workspace your-workspace
@@ -143,6 +147,18 @@ python scripts/connect_slack.py --workspace your-workspace
 # Open dashboard
 open http://localhost:3000
 ```
+
+### Context API (REST)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/health` | Liveness and dependency checks (Neo4j, Redis) |
+| `POST` | `/query` | Decision search (Neo4j full-text + optional Qdrant merge when `CORTEX_SEMANTIC_ENABLED=true`) |
+| `POST` | `/inject` | Ranked context for agents |
+| `GET` | `/contradictions/pending` | Pending contradiction review items (`workspace_id` query param; `X-Cortex-Roles` for RBAC) |
+| `POST` | `/webhooks/slack`, `/webhooks/github`, `/webhooks/jira` | Connector ingress → Kafka |
+
+Use `docker compose --profile api up` to build the API and pipeline worker, or run `uvicorn api.main:app --reload` from the repo root with services in `.env`.
 
 **Add to any MCP-compatible agent (Claude, Cursor):**
 
@@ -187,7 +203,8 @@ cortex/
 ├── scoring/              # Importance scorer, trust scorer, coverage scorer
 ├── graph/                # Neo4j schema, migrations, Cypher queries
 │   └── migrations/       # V001__initial_schema.cypher, etc.
-├── memory/               # Memory fabric — read/write layer
+├── pipeline/             # Kafka extraction worker (raw → graph)
+├── memory/               # Episodic (Timescale) + semantic (Qdrant) helpers
 ├── intelligence/         # Contradiction detector, decay engine, outcome linker
 ├── api/                  # FastAPI application
 ├── mcp/                  # MCP server (TypeScript)

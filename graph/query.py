@@ -12,6 +12,20 @@ from graph.rbac import can_access
 
 log = structlog.get_logger(__name__)
 
+_FETCH_BY_IDS = """
+MATCH (d:Decision)
+WHERE d.workspace_id = $workspace_id AND d.id IN $ids
+  AND d.status <> 'archived'
+OPTIONAL MATCH (p:Person)-[:MADE]->(d)
+OPTIONAL MATCH (d)-[:AFFECTS]->(s:System)
+OPTIONAL MATCH (d)-[:HAS_RATIONALE]->(r:Rationale)
+WITH d,
+     collect(DISTINCT p.id) AS made_by,
+     collect(DISTINCT s.id) AS affects,
+     collect(DISTINCT r.content) AS rationale
+RETURN d, made_by, affects, rationale
+"""
+
 _SEARCH_DECISIONS = """
 CALL db.index.fulltext.queryNodes('decision_content_fulltext', $query)
 YIELD node AS d, score
@@ -90,21 +104,12 @@ class GraphQueryService:
                 if not can_access(decision.get("access_policy"), caller_roles):
                     continue
                 results.append(
-                    {
-                        "event_id": decision.get("id", ""),
-                        "event_type": decision.get("event_type", ""),
-                        "content": decision.get("content", ""),
-                        "made_by": [value for value in record["made_by"] if value],
-                        "affects": [value for value in record["affects"] if value],
-                        "rationale": [value for value in record["rationale"] if value],
-                        "importance_score": decision.get("importance_score", 0.0),
-                        "trust_score": decision.get("trust_score", 0.0),
-                        "extraction_confidence": decision.get("extraction_confidence", 0.0),
-                        "source": decision.get("source", ""),
-                        "channel": decision.get("channel", ""),
-                        "extracted_at": decision.get("extracted_at", ""),
-                        "status": decision.get("status", "active"),
-                    }
+                    self._format_decision(
+                        decision,
+                        record["made_by"],
+                        record["affects"],
+                        record["rationale"],
+                    )
                 )
 
         log.info(
@@ -112,4 +117,59 @@ class GraphQueryService:
             workspace_id=workspace_id,
             result_count=len(results),
         )
+        return results
+
+    @staticmethod
+    def _format_decision(
+        decision: Any,
+        made_by: list[Any],
+        affects: list[Any],
+        rationale: list[Any],
+    ) -> dict[str, Any]:
+        return {
+            "event_id": decision.get("id", ""),
+            "event_type": decision.get("event_type", ""),
+            "content": decision.get("content", ""),
+            "made_by": [value for value in made_by if value],
+            "affects": [value for value in affects if value],
+            "rationale": [value for value in rationale if value],
+            "importance_score": decision.get("importance_score", 0.0),
+            "trust_score": decision.get("trust_score", 0.0),
+            "extraction_confidence": decision.get("extraction_confidence", 0.0),
+            "source": decision.get("source", ""),
+            "channel": decision.get("channel", ""),
+            "extracted_at": decision.get("extracted_at", ""),
+            "status": decision.get("status", "active"),
+        }
+
+    async def fetch_decisions_by_ids(
+        self,
+        *,
+        ids: list[str],
+        workspace_id: str,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """Load decisions by id with RBAC filtering."""
+        if not ids:
+            return []
+        driver = await self._driver_instance()
+        results: list[dict[str, Any]] = []
+        async with driver.session() as session:
+            result = await session.run(
+                _FETCH_BY_IDS,
+                ids=ids,
+                workspace_id=workspace_id,
+            )
+            async for record in result:
+                decision = record["d"]
+                if not can_access(decision.get("access_policy"), caller_roles):
+                    continue
+                results.append(
+                    self._format_decision(
+                        decision,
+                        record["made_by"],
+                        record["affects"],
+                        record["rationale"],
+                    )
+                )
         return results

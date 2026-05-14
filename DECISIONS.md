@@ -208,6 +208,15 @@ access_policy: {
 
 ---
 
+### D-013 — 2026-05-14 — Consolidated raw Kafka topics for GitHub and Jira
+**Status:** Active
+**Decision:** GitHub and Jira connectors publish to `cortex.raw.github.events` and `cortex.raw.jira.events` respectively (single topic per source) instead of per-event-type topics (`cortex.raw.github.prs`, etc.).
+**Rationale:** Fewer consumer groups and simpler operations for the MVP pipeline worker. Event type is carried in `RawEvent.event_type`. The extraction worker subscribes to all raw topics in one group. Architecture tables in docs are updated to list both the canonical per-type names (for future scaling) and the implemented consolidated names.
+**Alternatives rejected:** Many topics per event type (higher ops burden for MVP replay testing).
+**Owner:** Abhinaysai
+
+---
+
 ## PENDING DECISIONS (need resolution before build)
 
 | # | Decision needed | Options | Deadline | Status |

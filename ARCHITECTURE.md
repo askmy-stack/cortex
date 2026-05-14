@@ -91,6 +91,8 @@ Connectors are stateless plugins. They transform tool events into a standard `Ra
 | `cortex.intelligence.contradictions` | Contradiction detector | Human review queue |
 | `cortex.intelligence.outcomes` | Outcome linker | Graph updater |
 
+**Implementation note (MVP code):** GitHub and Jira use aggregate topics `cortex.raw.github.events` and `cortex.raw.jira.events` so the extraction worker can subscribe once per source; `RawEvent.event_type` carries PR/issue/comment granularity. The per-event-type topic names in earlier rows remain the documented scale-out target.
+
 ### RawEvent schema (all connectors output this)
 ```python
 class RawEvent(BaseModel):

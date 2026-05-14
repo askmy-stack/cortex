@@ -13,6 +13,9 @@ from pydantic import ValidationError
 
 from extraction.decision_extractor import DecisionExtractor
 from graph.writer import GraphWriter
+from intelligence.contradiction_detector import ContradictionDetector
+from memory.episodic import append_raw_event
+from memory.semantic import upsert_decision_vector
 from scoring.importance import ImportanceScorer
 from scoring.trust_scorer import TrustScorer, is_writable
 from shared.models import RawEvent
@@ -52,6 +55,7 @@ class ExtractionWorker:
             "KAFKA_BOOTSTRAP_SERVERS",
             "localhost:9092",
         )
+        self._bootstrap_servers = servers
         self._consumer = Consumer(
             {
                 "bootstrap.servers": servers,
@@ -71,9 +75,23 @@ class ExtractionWorker:
         self._importance = ImportanceScorer()
         self._trust = TrustScorer()
         self._writer = GraphWriter()
+        self._contradictions: ContradictionDetector | None = None
         self._processed: set[str] = set()
         self._running = True
         log.info("pipeline.worker.initialized", topics=RAW_TOPICS, group_id=group_id)
+
+    def _contradiction_detector(self) -> ContradictionDetector | None:
+        if os.environ.get("CORTEX_CONTRADICTION_ENABLED", "true").lower() not in {
+            "1",
+            "true",
+            "yes",
+        }:
+            return None
+        if self._contradictions is None:
+            self._contradictions = ContradictionDetector(
+                bootstrap_servers=self._bootstrap_servers,
+            )
+        return self._contradictions
 
     def stop(self) -> None:
         self._running = False
@@ -83,6 +101,11 @@ class ExtractionWorker:
         if raw_event.event_id in self._processed:
             log.debug("pipeline.event.duplicate", event_id=raw_event.event_id)
             return None
+
+        try:
+            append_raw_event(raw_event)
+        except Exception as exc:
+            log.warning("episodic.append_failed", error=str(exc), event_id=raw_event.event_id)
 
         decision = self._extractor.extract(raw_event)
         if decision is None:
@@ -121,6 +144,21 @@ class ExtractionWorker:
         )
         self._producer.poll(0)
         self._processed.add(raw_event.event_id)
+
+        try:
+            upsert_decision_vector(decision)
+        except Exception as exc:
+            log.warning("semantic.upsert_failed", error=str(exc), event_id=decision.event_id)
+
+        detector = self._contradiction_detector()
+        if detector is not None:
+            try:
+                candidates = detector.find_candidates(decision)
+                if candidates:
+                    detector.persist_and_notify(decision, candidates)
+            except Exception as exc:
+                log.warning("contradiction.pipeline_failed", error=str(exc))
+
         return event_id
 
     def _handle_message(self, message: Any) -> None:
@@ -162,6 +200,8 @@ class ExtractionWorker:
         self._producer.flush(10.0)
         self._consumer.close()
         self._writer.close()
+        if self._contradictions is not None:
+            self._contradictions.close()
         log.info("pipeline.worker.closed")
 
 

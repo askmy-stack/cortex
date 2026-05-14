@@ -10,6 +10,7 @@ from typing import Any
 import structlog
 
 from graph.query import GraphQueryService
+from memory.semantic import search_decision_ids, semantic_enabled
 from scoring.trust_scorer import is_injectable
 
 log = structlog.get_logger(__name__)
@@ -87,6 +88,25 @@ class MemoryService:
             event_types=event_types,
             caller_roles=caller_roles,
         )
+
+        if semantic_enabled():
+            semantic_ids = search_decision_ids(
+                query,
+                workspace_id=workspace_id,
+                limit=limit,
+            )
+            if semantic_ids:
+                extra = await self._graph.fetch_decisions_by_ids(
+                    ids=semantic_ids,
+                    workspace_id=workspace_id,
+                    caller_roles=caller_roles,
+                )
+                seen = {row["event_id"] for row in results}
+                for row in extra:
+                    if row["event_id"] not in seen:
+                        results.append(row)
+                        seen.add(row["event_id"])
+                results = results[:limit]
 
         if self._redis is not None:
             self._redis.setex(cache_key, 60, json.dumps(results))

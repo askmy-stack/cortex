@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from api.contradictions import router as contradictions_router
 from api.memory import MemoryService
 from api.webhooks import router as webhooks_router
 
@@ -72,6 +73,7 @@ app.add_middleware(
 )
 
 app.include_router(webhooks_router)
+app.include_router(contradictions_router)
 
 
 def _memory() -> MemoryService:

@@ -175,3 +175,31 @@
 - MCP adoption by OpenAI, Google, Microsoft (2025) makes MCP server the right distribution mechanism
 - Demo scenario: new engineer asks Cursor "why CockroachDB?" → full decision history returned in 3 seconds
 - This project targets AI Infrastructure Engineer roles — different hiring pool from Meridian (Data/MLOps)
+
+---
+
+## Session 2 — 2026-05-14
+**Duration:** ~2h
+**Phase:** Phases 3–6 (API, intelligence, semantic/episodic hooks, dashboard)
+
+### Built
+- `intelligence/contradiction_detector.py` — overlap + negation heuristics, Neo4j `Contradiction` nodes, Kafka `cortex.intelligence.contradictions`
+- `intelligence/decay_engine.py` — batch importance decay by age (`python -m intelligence.decay_engine`)
+- `graph/migrations/V006__contradiction_nodes.cypher` — contradiction constraints and index
+- `api/contradictions.py` — `GET /contradictions/pending` human review queue
+- `graph/query.py` — `fetch_decisions_by_ids` for hybrid retrieval
+- `memory/episodic.py` — optional Timescale append for `RawEvent`
+- `memory/semantic.py` — optional Qdrant upsert + search when `CORTEX_SEMANTIC_ENABLED=true`
+- `api/memory.py` — merges semantic hits with full-text graph results
+- `pipeline/extraction_worker.py` — episodic append, Qdrant upsert, post-write contradiction pass (toggle `CORTEX_CONTRADICTION_ENABLED`)
+- `frontend/` — Vite + React dashboard (health + links), production Docker image with nginx
+- Tests: `tests/intelligence/*`, contradictions API test, conftest disables contradiction Neo4j in unit tests by default
+
+### State at end
+- 207 pytest tests passing
+- Phase 7 launch items (video, HN post) remain manual owner tasks
+
+### Next session starts with
+1. Run `python -m graph.migrate` against Neo4j with correct credentials (apply V006)
+2. `docker compose --profile api up` and validate webhook → worker → graph on a dev workspace
+3. Record demo / README GIF when graph has seed data
