@@ -2,20 +2,14 @@
 // Core node types, uniqueness constraints, and property indices.
 // Decision: D-002 — Neo4j as structural memory store.
 // Run via: graph/migrate.py or manually via cypher-shell.
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Schema version tracking
-// ─────────────────────────────────────────────────────────────────────────────
-MERGE (:SchemaVersion {version: 1, applied_at: datetime(), description: "Initial schema"});
+// Neo4j Community: no property-existence constraints (Enterprise-only).
+// workspace_id is enforced in graph/writer.py.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DECISION — core memory unit
 // ─────────────────────────────────────────────────────────────────────────────
 CREATE CONSTRAINT decision_id_unique IF NOT EXISTS
   FOR (d:Decision) REQUIRE d.id IS UNIQUE;
-
-CREATE CONSTRAINT decision_workspace_required IF NOT EXISTS
-  FOR (d:Decision) REQUIRE d.workspace_id IS NOT NULL;
 
 CREATE INDEX decision_workspace_status IF NOT EXISTS
   FOR (d:Decision) ON (d.workspace_id, d.status);
@@ -70,3 +64,7 @@ CREATE CONSTRAINT team_id_unique IF NOT EXISTS
 
 CREATE INDEX team_workspace IF NOT EXISTS
   FOR (t:Team) ON (t.workspace_id);
+
+// Schema version recorded last so a failed migration does not mark this version applied.
+MERGE (v:SchemaVersion {version: 1})
+SET v.applied_at = datetime(), v.description = "Initial schema";

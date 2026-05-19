@@ -25,7 +25,7 @@ def test_health_endpoint() -> None:
 def test_query_endpoint_uses_memory_service() -> None:
     client = TestClient(app)
     with patch(
-        "api.main._memory",
+        "api.main.memory",
         return_value=AsyncMock(
             query_decisions=AsyncMock(
                 return_value=[

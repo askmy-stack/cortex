@@ -25,6 +25,19 @@ MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 VERSION_PATTERN = re.compile(r"V(\d+)__(.+)\.cypher")
 
 
+def _strip_leading_comments(statement: str) -> str:
+    """Remove blank lines and // comment lines from the start of a Cypher chunk.
+
+    Semicolon-splitting can attach file header comments to the first real statement;
+    skipping any chunk that merely *starts* with ``//`` would incorrectly skip that statement.
+    """
+    lines = statement.splitlines()
+    i = 0
+    while i < len(lines) and (not lines[i].strip() or lines[i].strip().startswith("//")):
+        i += 1
+    return "\n".join(lines[i:]).strip()
+
+
 def get_driver() -> Driver:
     """Create a Neo4j driver from environment variables."""
     uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
@@ -63,15 +76,16 @@ def apply_migration(driver: Driver, version: int, description: str, path: Path) 
 
     with driver.session() as session:
         for statement in statements:
-            if statement.startswith("//"):
+            body = _strip_leading_comments(statement)
+            if not body:
                 continue
             try:
-                session.run(statement)
+                session.run(body)
             except Exception as exc:
                 log.error(
                     "migration.statement_failed",
                     version=version,
-                    statement=statement[:100],
+                    statement=body[:100],
                     error=str(exc),
                 )
                 raise

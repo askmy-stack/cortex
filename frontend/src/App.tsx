@@ -1,67 +1,65 @@
-import { useEffect, useState } from "react";
+import { AppProvider, useApp } from "./context/AppContext";
+import { Sidebar } from "./components/layout/Sidebar";
+import { AssistantPanel } from "./components/assistant/AssistantPanel";
+import { HomeView } from "./views/HomeView";
+import { AskView } from "./views/AskView";
+import { ExploreView } from "./views/ExploreView";
+import { AgentsView } from "./views/AgentsView";
+import { ReviewView } from "./views/ReviewView";
+import { apiBase } from "./api/client";
 
-const apiBase = import.meta.env.VITE_API_URL ?? "";
-
-type Health = {
-  status: string;
-  version: string;
-  uptime_seconds: number;
-  dependencies: Record<string, string>;
-};
-
-export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const url = `${apiBase}/health`;
-    fetch(url)
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error(`HTTP ${r.status}`);
-        }
-        return r.json();
-      })
-      .then((data: Health) => setHealth(data))
-      .catch((e: Error) => setError(e.message));
-  }, []);
+function MainContent() {
+  const { view } = useApp();
 
   return (
-    <main>
-      <h1>Cortex</h1>
-      <p>Organizational memory dashboard (Phase 6 preview).</p>
-
-      <section className="card">
-        <h2>API health</h2>
-        {error && <p className="status-bad">Could not reach API: {error}</p>}
-        {!error && !health && <p>Loading…</p>}
-        {health && (
-          <>
-            <p>
-              Status:{" "}
-              <span className={health.status === "ok" ? "status-ok" : "status-bad"}>
-                {health.status}
-              </span>{" "}
-              · v{health.version} · uptime {health.uptime_seconds}s
-            </p>
-            <pre>{JSON.stringify(health.dependencies, null, 2)}</pre>
-          </>
-        )}
-      </section>
-
-      <section className="card">
-        <h2>Links</h2>
-        <ul>
-          <li>
-            <a href={`${apiBase || ""}/docs`}>OpenAPI docs</a>
-          </li>
-          <li>
-            <a href={`${apiBase || ""}/contradictions/pending?workspace_id=local-dev`}>
-              Pending contradictions (GET)
-            </a>
-          </li>
-        </ul>
-      </section>
+    <main className="main" id="main">
+      {view === "home" && <HomeView />}
+      {view === "ask" && <AskView />}
+      {view === "explore" && <ExploreView />}
+      {view === "agents" && <AgentsView />}
+      {view === "review" && <ReviewView />}
     </main>
+  );
+}
+
+function AppChrome() {
+  return (
+    <div className="app">
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
+      <header className="topbar">
+        <div className="topbar__brand">
+          <span className="topbar__logo" aria-hidden>
+            ◈
+          </span>
+          <div>
+            <span className="topbar__name">Cortex</span>
+            <span className="topbar__tag">Organizational memory</span>
+          </div>
+        </div>
+        <a className="topbar__api" href={`${apiBase}/docs`} target="_blank" rel="noreferrer">
+          API docs
+        </a>
+      </header>
+
+      <div className="app__body">
+        <Sidebar />
+        <MainContent />
+        <AssistantPanel />
+      </div>
+
+      <footer className="footer">
+        <p>Cortex · Decisions, not documents · Memory that agents can trust</p>
+      </footer>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppChrome />
+    </AppProvider>
   );
 }

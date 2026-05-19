@@ -92,6 +92,10 @@ services:
   neo4j:
     image: neo4j:5.20-community
     container_name: cortex-neo4j
+    # Stable hostname + loopback so Java InetAddress.getLocalHost() resolves (avoids crash loop on some Docker setups).
+    hostname: neo4j
+    extra_hosts:
+      - "neo4j:127.0.0.1"
     restart: unless-stopped
     networks: [cortex]
     ports:
@@ -101,9 +105,9 @@ services:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-cortex_local}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
-      NEO4J_dbms_memory_heap_initial__size: 512m
-      NEO4J_dbms_memory_heap_max__size: 2g
-      NEO4J_dbms_memory_pagecache_size: 512m
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 2g
+      NEO4J_server_memory_pagecache_size: 512m
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -279,6 +283,11 @@ services:
     restart: unless-stopped
     networks: [cortex]
     env_file: .env
+    environment:
+      # Inside Compose, use service DNS names — .env defaults target host-local dev.
+      NEO4J_URI: bolt://neo4j:7687
+      REDIS_HOST: redis
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     depends_on:
       kafka:
         condition: service_healthy
@@ -296,6 +305,9 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      REDIS_HOST: redis
     depends_on:
       neo4j:
         condition: service_healthy

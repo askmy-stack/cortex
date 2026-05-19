@@ -74,6 +74,7 @@ include = [
     "intelligence*",
     "api*",
     "pipeline*",
+    "sdk*",
 ]
 
 [tool.ruff]

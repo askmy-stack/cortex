@@ -46,6 +46,34 @@ server.tool(
 );
 
 server.tool(
+  "cortex_remember",
+  {
+    description: "Submit explicit organizational memory into the ingestion pipeline",
+    inputSchema: {
+      type: "object",
+      properties: {
+        content: { type: "string" },
+        workspace_id: { type: "string" },
+        author: { type: "string" },
+        affects: { type: "array", items: { type: "string" } },
+      },
+      required: ["content", "workspace_id"],
+    },
+  },
+  async ({ content, workspace_id, author = "mcp-agent", affects = [] }) => {
+    const payload = await postJson("/remember", {
+      content,
+      workspace_id,
+      author,
+      affects,
+    });
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    };
+  },
+);
+
+server.tool(
   "cortex_inject",
   {
     description: "Inject relevant organizational memory into agent context",

@@ -26,6 +26,8 @@ RAW_TOPICS = [
     "cortex.raw.slack.messages",
     "cortex.raw.github.events",
     "cortex.raw.jira.events",
+    "cortex.raw.linear.events",
+    "cortex.raw.manual.events",
 ]
 EXTRACTED_TOPIC = "cortex.extracted.decisions"
 CONSUMER_GROUP = "cortex-extraction-worker"

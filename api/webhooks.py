@@ -14,6 +14,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, status
 
 from connectors.github.producer import GitHubConnector
 from connectors.jira.producer import JiraConnector
+from connectors.linear.producer import LinearConnector
 from connectors.slack.producer import SlackConnector
 
 log = structlog.get_logger(__name__)
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 _slack_connector: SlackConnector | None = None
 _github_connector: GitHubConnector | None = None
 _jira_connector: JiraConnector | None = None
+_linear_connector: LinearConnector | None = None
 
 
 def _get_slack_connector() -> SlackConnector:
@@ -44,6 +46,13 @@ def _get_jira_connector() -> JiraConnector:
     if _jira_connector is None:
         _jira_connector = JiraConnector()
     return _jira_connector
+
+
+def _get_linear_connector() -> LinearConnector:
+    global _linear_connector
+    if _linear_connector is None:
+        _linear_connector = LinearConnector()
+    return _linear_connector
 
 
 def _verify_slack_signature(
@@ -129,3 +138,18 @@ async def jira_webhook(request: Request) -> dict[str, Any]:
     """Receive Jira webhook payloads."""
     payload = await request.json()
     return _get_jira_connector().handle_event(payload)
+
+
+@router.post("/linear")
+async def linear_webhook(
+    request: Request,
+    linear_signature: str | None = Header(default=None, alias="Linear-Signature"),
+) -> dict[str, Any]:
+    """Receive Linear webhook payloads."""
+    body = await request.body()
+    payload = json.loads(body.decode("utf-8"))
+    return _get_linear_connector().handle_event(
+        payload,
+        signature=linear_signature,
+        raw_body=body,
+    )

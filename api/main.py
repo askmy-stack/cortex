@@ -22,16 +22,24 @@ import structlog
 from fastapi import FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-
 from api.contradictions import router as contradictions_router
+from api.decisions import router as decisions_router
+from api.deps import caller_roles, memory, set_memory_service
 from api.memory import MemoryService
+from api.remember import router as remember_router
+from api.schemas import (
+    DecisionResult,
+    HealthResponse,
+    InjectRequest,
+    InjectResponse,
+    QueryRequest,
+    QueryResponse,
+)
 from api.webhooks import router as webhooks_router
 
 log = structlog.get_logger(__name__)
 
 _start_time = time.time()
-_memory_service: MemoryService | None = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -42,16 +50,16 @@ _memory_service: MemoryService | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup and shutdown lifecycle."""
-    global _memory_service
-    _memory_service = MemoryService()
+    service = MemoryService()
+    set_memory_service(service)
     log.info(
         "cortex.api.starting",
         version=app.version,
         environment=os.environ.get("ENVIRONMENT", "development"),
     )
     yield
-    if _memory_service is not None:
-        await _memory_service.close()
+    await service.close()
+    set_memory_service(None)
     log.info("cortex.api.shutdown")
 
 
@@ -74,117 +82,8 @@ app.add_middleware(
 
 app.include_router(webhooks_router)
 app.include_router(contradictions_router)
-
-
-def _memory() -> MemoryService:
-    if _memory_service is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Memory service is not initialized",
-        )
-    return _memory_service
-
-
-def _caller_roles(x_cortex_roles: str | None) -> list[str]:
-    if not x_cortex_roles:
-        return ["authenticated"]
-    return [role.strip() for role in x_cortex_roles.split(",") if role.strip()]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Request / response schemas
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-class HealthResponse(BaseModel):
-    status: str
-    version: str
-    uptime_seconds: float
-    dependencies: dict[str, str]
-
-
-class QueryRequest(BaseModel):
-    query: str = Field(
-        description="Natural language question about organizational decisions",
-        min_length=3,
-        max_length=1000,
-        examples=["Why did we choose CockroachDB for payments?"],
-    )
-    workspace_id: str = Field(
-        description="Workspace to search within",
-        examples=["acme-corp"],
-    )
-    limit: int = Field(
-        default=10,
-        ge=1,
-        le=50,
-        description="Maximum number of results to return",
-    )
-    event_types: list[str] = Field(
-        default_factory=list,
-        description="Filter by event types: decision, exception, rationale, update, escalation",
-    )
-    min_importance: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Minimum importance score filter",
-    )
-    min_trust: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Minimum trust score filter",
-    )
-
-
-class DecisionResult(BaseModel):
-    event_id: str
-    event_type: str
-    content: str
-    made_by: list[str]
-    affects: list[str]
-    rationale: list[str]
-    importance_score: float
-    trust_score: float
-    extraction_confidence: float
-    source: str
-    channel: str
-    extracted_at: str
-    status: str
-
-
-class QueryResponse(BaseModel):
-    query: str
-    workspace_id: str
-    results: list[DecisionResult]
-    total: int
-    latency_ms: float
-
-
-class InjectRequest(BaseModel):
-    context: str = Field(
-        description="Current task context — what the AI agent is working on",
-        min_length=10,
-        max_length=5000,
-    )
-    workspace_id: str
-    agent_id: str = Field(description="Requesting agent identifier (DID or service name)")
-    max_tokens: int = Field(
-        default=4000,
-        ge=100,
-        le=16000,
-        description="Maximum tokens for injected context",
-    )
-
-
-class InjectResponse(BaseModel):
-    agent_id: str
-    workspace_id: str
-    injected_decisions: list[DecisionResult]
-    context_summary: str
-    token_estimate: int
-    latency_ms: float
+app.include_router(decisions_router)
+app.include_router(remember_router)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -272,8 +171,7 @@ async def query(
 ) -> QueryResponse:
     """Search organizational decisions by natural language query.
 
-    Phase 3 implementation: full semantic search via Qdrant + Neo4j graph traversal.
-    Current implementation (Phase 2): Neo4j keyword/text search stub.
+    Neo4j full-text search with optional Qdrant semantic merge (see memory.semantic).
 
     Decision: D-004 — Active context injection, not passive retrieval.
     RBAC: workspace_id scoped — cross-workspace results never returned.
@@ -288,14 +186,14 @@ async def query(
     )
 
     try:
-        records = await _memory().query_decisions(
+        records = await memory().query_decisions(
             query=request.query,
             workspace_id=request.workspace_id,
             limit=request.limit,
             min_importance=request.min_importance,
             min_trust=request.min_trust,
             event_types=request.event_types,
-            caller_roles=_caller_roles(x_cortex_roles),
+            caller_roles=caller_roles(x_cortex_roles),
         )
         results = [DecisionResult(**record) for record in records]
     except Exception as exc:
@@ -337,8 +235,7 @@ async def inject(
     Called by the MCP server (mcp/server.ts) on every agent tool invocation.
     Returns the most relevant decisions ranked by importance × trust × recency.
 
-    Phase 3: full implementation with Qdrant semantic search.
-    Current (Phase 2): stub returning empty context.
+    Ranks injectable decisions by importance × trust (see scoring.trust_scorer).
     """
     t0 = time.time()
 
@@ -350,10 +247,10 @@ async def inject(
     )
 
     try:
-        injected = await _memory().inject_decisions(
+        injected = await memory().inject_decisions(
             context=request.context,
             workspace_id=request.workspace_id,
-            caller_roles=_caller_roles(x_cortex_roles),
+            caller_roles=caller_roles(x_cortex_roles),
             limit=min(request.max_tokens // 400, 10),
         )
     except Exception as exc:

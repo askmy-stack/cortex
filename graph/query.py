@@ -27,7 +27,7 @@ RETURN d, made_by, affects, rationale
 """
 
 _SEARCH_DECISIONS = """
-CALL db.index.fulltext.queryNodes('decision_content_fulltext', $query)
+CALL db.index.fulltext.queryNodes('decision_content_fulltext', $search_text)
 YIELD node AS d, score
 WHERE d.workspace_id = $workspace_id
   AND d.status <> 'archived'
@@ -43,6 +43,64 @@ WITH d, score,
      collect(DISTINCT r.content) AS rationale
 RETURN d, score, made_by, affects, rationale
 ORDER BY score DESC, d.importance_score DESC
+LIMIT $limit
+"""
+
+_DECISIONS_BY_SYSTEM = """
+MATCH (d:Decision)-[:AFFECTS]->(s:System)
+WHERE d.workspace_id = $workspace_id
+  AND d.status <> 'archived'
+  AND (s.id = $system_id OR toLower(s.name) = toLower($system_id))
+OPTIONAL MATCH (p:Person)-[:MADE]->(d)
+OPTIONAL MATCH (d)-[:AFFECTS]->(sys:System)
+OPTIONAL MATCH (d)-[:HAS_RATIONALE]->(r:Rationale)
+WITH d,
+     collect(DISTINCT p.id) AS made_by,
+     collect(DISTINCT sys.id) AS affects,
+     collect(DISTINCT r.content) AS rationale
+RETURN d, made_by, affects, rationale
+ORDER BY d.extracted_at DESC
+LIMIT $limit
+"""
+
+_CAUSAL_CHAIN = """
+MATCH (root:Decision {id: $decision_id, workspace_id: $workspace_id})
+OPTIONAL MATCH (root)-[:SUPERSEDES*1..$max_depth]->(prior:Decision)
+WHERE prior.workspace_id = $workspace_id
+OPTIONAL MATCH (successor:Decision)-[:SUPERSEDES*1..$max_depth]->(root)
+WHERE successor.workspace_id = $workspace_id
+OPTIONAL MATCH (trigger:Decision {id: root.triggered_by, workspace_id: $workspace_id})
+WITH collect(DISTINCT root) + collect(DISTINCT prior) + collect(DISTINCT successor)
+     + CASE WHEN trigger IS NULL THEN [] ELSE [trigger] END AS all_nodes
+UNWIND all_nodes AS d
+WITH DISTINCT d
+WHERE d.status <> 'archived'
+OPTIONAL MATCH (p:Person)-[:MADE]->(d)
+OPTIONAL MATCH (d)-[:AFFECTS]->(sys:System)
+OPTIONAL MATCH (d)-[:HAS_RATIONALE]->(r:Rationale)
+OPTIONAL MATCH (d)-[:SUPERSEDES]->(replaced:Decision)
+RETURN d,
+       collect(DISTINCT p.id) AS made_by,
+       collect(DISTINCT sys.id) AS affects,
+       collect(DISTINCT r.content) AS rationale,
+       collect(DISTINCT replaced.id) AS supersedes_ids,
+       d.triggered_by AS triggered_by_id
+ORDER BY d.extracted_at ASC
+"""
+
+_CONFLICT_CANDIDATES = """
+MATCH (d:Decision {id: $decision_id, workspace_id: $workspace_id})-[:AFFECTS]->(s:System)
+MATCH (other:Decision)-[:AFFECTS]->(s)
+WHERE other.id <> $decision_id
+  AND other.workspace_id = $workspace_id
+  AND other.status IN ['active', 'under_review']
+OPTIONAL MATCH (p:Person)-[:MADE]->(other)
+OPTIONAL MATCH (other)-[:AFFECTS]->(sys:System)
+OPTIONAL MATCH (other)-[:HAS_RATIONALE]->(r:Rationale)
+RETURN other AS d,
+       collect(DISTINCT p.id) AS made_by,
+       collect(DISTINCT sys.id) AS affects,
+       collect(DISTINCT r.content) AS rationale
 LIMIT $limit
 """
 
@@ -92,7 +150,7 @@ class GraphQueryService:
         async with driver.session() as session:
             result = await session.run(
                 _SEARCH_DECISIONS,
-                query=query,
+                search_text=query,
                 workspace_id=workspace_id,
                 limit=limit,
                 min_importance=min_importance,
@@ -113,10 +171,137 @@ class GraphQueryService:
                 )
 
         log.info(
-            "graph.query.complete",
+            "graph.query.search_complete",
             workspace_id=workspace_id,
             result_count=len(results),
         )
+        return results
+
+    async def find_decisions_by_system(
+        self,
+        *,
+        system_id: str,
+        workspace_id: str,
+        limit: int,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """Return recent decisions affecting a system (by id or name)."""
+        driver = await self._driver_instance()
+        results: list[dict[str, Any]] = []
+        async with driver.session() as session:
+            result = await session.run(
+                _DECISIONS_BY_SYSTEM,
+                system_id=system_id,
+                workspace_id=workspace_id,
+                limit=limit,
+            )
+            async for record in result:
+                decision = record["d"]
+                if not can_access(decision.get("access_policy"), caller_roles):
+                    continue
+                results.append(
+                    self._format_decision(
+                        decision,
+                        record["made_by"],
+                        record["affects"],
+                        record["rationale"],
+                    )
+                )
+        log.info(
+            "graph.query.by_system",
+            workspace_id=workspace_id,
+            system_id=system_id,
+            result_count=len(results),
+        )
+        return results
+
+    async def get_decision(
+        self,
+        *,
+        decision_id: str,
+        workspace_id: str,
+        caller_roles: list[str],
+    ) -> dict[str, Any] | None:
+        """Load a single decision by id."""
+        rows = await self.fetch_decisions_by_ids(
+            ids=[decision_id],
+            workspace_id=workspace_id,
+            caller_roles=caller_roles,
+        )
+        return rows[0] if rows else None
+
+    async def trace_causal_chain(
+        self,
+        *,
+        decision_id: str,
+        workspace_id: str,
+        max_depth: int,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """Return the root decision and related SUPERSEDES / TRIGGERED chain."""
+        driver = await self._driver_instance()
+        depth = max(1, min(max_depth, 8))
+        nodes: list[dict[str, Any]] = []
+        async with driver.session() as session:
+            result = await session.run(
+                _CAUSAL_CHAIN,
+                decision_id=decision_id,
+                workspace_id=workspace_id,
+                max_depth=depth,
+            )
+            async for record in result:
+                decision = record["d"]
+                if not can_access(decision.get("access_policy"), caller_roles):
+                    continue
+                formatted = self._format_decision(
+                    decision,
+                    record["made_by"],
+                    record["affects"],
+                    record["rationale"],
+                )
+                formatted["supersedes_ids"] = [
+                    value for value in record["supersedes_ids"] if value
+                ]
+                formatted["triggered_by_id"] = record["triggered_by_id"]
+                nodes.append(formatted)
+        log.info(
+            "graph.query.causal_chain",
+            workspace_id=workspace_id,
+            decision_id=decision_id,
+            node_count=len(nodes),
+        )
+        return nodes
+
+    async def find_conflict_candidates(
+        self,
+        *,
+        decision_id: str,
+        workspace_id: str,
+        limit: int,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """Return active decisions on shared systems (contradiction preview)."""
+        driver = await self._driver_instance()
+        results: list[dict[str, Any]] = []
+        async with driver.session() as session:
+            result = await session.run(
+                _CONFLICT_CANDIDATES,
+                decision_id=decision_id,
+                workspace_id=workspace_id,
+                limit=limit,
+            )
+            async for record in result:
+                decision = record["d"]
+                if not can_access(decision.get("access_policy"), caller_roles):
+                    continue
+                results.append(
+                    self._format_decision(
+                        decision,
+                        record["made_by"],
+                        record["affects"],
+                        record["rationale"],
+                    )
+                )
         return results
 
     @staticmethod

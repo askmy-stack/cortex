@@ -40,7 +40,9 @@ class RawEvent(BaseModel):
     """
 
     event_id: str = Field(default_factory=_uuid4, description="UUID4 — unique event ID")
-    source: Literal["slack", "github", "jira", "linear", "meeting", "cicd"] = Field(
+    source: Literal[
+        "slack", "github", "jira", "linear", "meeting", "cicd", "manual"
+    ] = Field(
         description="Tool the event originated from"
     )
     source_id: str = Field(description="Original ID from the source tool")

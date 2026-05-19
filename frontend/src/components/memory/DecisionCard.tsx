@@ -1,0 +1,102 @@
+import { useId, useState } from "react";
+import type { DecisionResult } from "../../types";
+import { formatRelativeTime, formatSource } from "../../lib/format";
+import { ScoreRing } from "../ui/ScoreRing";
+
+type Props = {
+  decision: DecisionResult;
+  defaultOpen?: boolean;
+  onSelect?: (id: string) => void;
+  selected?: boolean;
+};
+
+export function DecisionCard({ decision: d, defaultOpen, onSelect, selected }: Props) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const panelId = useId();
+
+  return (
+    <article className={`decision-card fade-in ${selected ? "decision-card--selected" : ""}`}>
+      <button
+        type="button"
+        className="decision-card__header"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="decision-card__type">{d.event_type}</span>
+        <h3 className="decision-card__title">{d.content}</h3>
+        <span className="decision-card__chevron" aria-hidden>
+          {open ? "−" : "+"}
+        </span>
+      </button>
+
+      <div className="decision-card__meta">
+        <span className="badge badge--source">{formatSource(d.source)}</span>
+        {d.channel ? <span className="badge badge--muted">{d.channel}</span> : null}
+        <span className={`badge badge--status badge--${d.status}`}>{d.status}</span>
+        <span className="decision-card__time">{formatRelativeTime(d.extracted_at)}</span>
+      </div>
+
+      {open ? (
+        <div className="decision-card__body" id={panelId}>
+          <div className="decision-card__scores">
+            <ScoreRing value={d.importance_score} label="Impact" size="sm" />
+            <ScoreRing value={d.trust_score} label="Trust" size="sm" />
+            <ScoreRing value={d.extraction_confidence} label="Clarity" size="sm" />
+          </div>
+
+          {d.made_by.length > 0 ? (
+            <section className="decision-card__section">
+              <h4>Who decided</h4>
+              <ul className="chip-list">
+                {d.made_by.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {d.affects.length > 0 ? (
+            <section className="decision-card__section">
+              <h4>Systems affected</h4>
+              <ul className="chip-list chip-list--accent">
+                {d.affects.map((s) => (
+                  <li key={s}>
+                    <button
+                      type="button"
+                      className="chip-link"
+                      onClick={() => onSelect?.(s)}
+                    >
+                      {s}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {d.rationale.length > 0 ? (
+            <section className="decision-card__section">
+              <h4>Why this matters</h4>
+              <ul className="rationale-list">
+                {d.rationale.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          <footer className="decision-card__footer">
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => onSelect?.(d.event_id)}
+            >
+              View in memory map →
+            </button>
+          </footer>
+        </div>
+      ) : null}
+    </article>
+  );
+}

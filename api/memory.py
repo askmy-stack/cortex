@@ -141,5 +141,53 @@ class MemoryService:
         )
         return injectable[:limit]
 
+    async def decisions_by_system(
+        self,
+        *,
+        system_id: str,
+        workspace_id: str,
+        limit: int,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """Recent decisions affecting a system."""
+        return await self._graph.find_decisions_by_system(
+            system_id=system_id,
+            workspace_id=workspace_id,
+            limit=limit,
+            caller_roles=caller_roles,
+        )
+
+    async def causal_chain(
+        self,
+        *,
+        decision_id: str,
+        workspace_id: str,
+        max_depth: int,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """SUPERSEDES and triggered_by lineage for a decision."""
+        return await self._graph.trace_causal_chain(
+            decision_id=decision_id,
+            workspace_id=workspace_id,
+            max_depth=max_depth,
+            caller_roles=caller_roles,
+        )
+
+    async def conflict_candidates(
+        self,
+        *,
+        decision_id: str,
+        workspace_id: str,
+        limit: int,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """Decisions on shared systems (contradiction preview)."""
+        return await self._graph.find_conflict_candidates(
+            decision_id=decision_id,
+            workspace_id=workspace_id,
+            limit=limit,
+            caller_roles=caller_roles,
+        )
+
     async def close(self) -> None:
         await self._graph.close()

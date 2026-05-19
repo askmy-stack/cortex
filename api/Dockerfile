@@ -15,6 +15,7 @@ COPY shared ./shared
 COPY pipeline ./pipeline
 COPY memory ./memory
 COPY intelligence ./intelligence
+COPY scripts ./scripts
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir .

@@ -217,6 +217,30 @@ access_policy: {
 
 ---
 
+### D-014 — 2026-05-14 — Turnkey local demo path (script + seeded graph)
+**Status:** Active
+**Decision:** Ship `scripts/demo.sh` + `make demo` as the canonical zero-to-query path: Compose brings core deps, migrations and `scripts/seed_demo.py` run inside the `api` image with `NEO4J_URI=bolt://neo4j:7687`, then API/worker/frontend start and a smoke `POST /query` runs from the host. Demo decisions use deterministic UUIDv5 ids so re-seeding is idempotent.
+**Rationale:** Portfolio demos must not depend on Slack OAuth or manual Kafka injection. Seeding via `GraphWriter` keeps the graph schema identical to production writes. Docker-only migrate/seed avoids “install Python deps on host” friction.
+**Alternatives rejected:** Seed-only Cypher without writer (schema drift risk); requiring host `pip install -e .` before every demo (higher friction than Compose-only).
+
+---
+
+### D-015 — 2026-05-14 — GitHub Actions CI + migration runner + query driver fix
+**Status:** Active
+**Decision:** Ship `.github/workflows/ci.yml` on `push`/`pull_request` to `main`, `master`, and `develop`: Python 3.11, `pip install -e ".[dev]"`, `pytest tests/`, then `python scripts/seed_demo.py --dry-run`. Harden `graph/migrate.py` with `_strip_leading_comments` so semicolon-split chunks that begin with file header comments still execute embedded DDL (fixes skipped fulltext in V005-style files). Rename full-text Cypher parameter to `$search_text` and pass `search_text=` into `AsyncSession.run` to avoid clashing with the driver’s reserved `query` keyword. Compose sets `NEO4J_URI`, `REDIS_HOST`, and `KAFKA_BOOTSTRAP_SERVERS` for `api` and `pipeline-worker` so in-container processes do not use `.env` host defaults.
+**Rationale:** CI without Docker keeps PRs fast; dry-run validates demo packaging; migration and driver bugs blocked `/query` after demo came up; service DNS overrides fix health vs graph mismatch inside containers.
+**Alternatives rejected:** Running full `docker compose build api` on every CI run until a slim API image exists (too slow for free-tier runners).
+
+---
+
+### D-016 — 2026-05-14 — Vite dashboard default API origin
+**Status:** Active
+**Decision:** When `VITE_API_URL` is unset or empty after trim, the React dashboard uses **`http://localhost:8000`** as the API origin for all `fetch()` calls and Tools panel links (OpenAPI, `/health`). Strip a single trailing slash from configured URLs.
+**Rationale:** Relative `fetch("/health")` from `http://localhost:3000` hits the Vite dev server, not FastAPI, which breaks Overview and every tab without an `.env` file. Explicit default matches `docker-compose` port mapping and demo docs.
+**Alternatives rejected:** Proxy-only (requires Vite config changes and differs from production); mandatory `.env` (extra friction for `npm run dev`).
+
+---
+
 ## PENDING DECISIONS (need resolution before build)
 
 | # | Decision needed | Options | Deadline | Status |

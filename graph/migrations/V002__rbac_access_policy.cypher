@@ -3,8 +3,6 @@
 // MUST be applied before any real data enters the system.
 // access_policy structure: {roles, deny, classification, gdpr_subject}
 
-MERGE (:SchemaVersion {version: 2, applied_at: datetime(), description: "RBAC access_policy"});
-
 // Index for RBAC policy lookups across all node types
 CREATE INDEX decision_access_policy IF NOT EXISTS
   FOR (d:Decision) ON (d.access_policy);
@@ -20,3 +18,6 @@ CREATE INDEX decision_access_policy IF NOT EXISTS
 //   "classification": "internal",
 //   "gdpr_subject": false
 // }
+
+MERGE (v:SchemaVersion {version: 2})
+SET v.applied_at = datetime(), v.description = "RBAC access_policy";
