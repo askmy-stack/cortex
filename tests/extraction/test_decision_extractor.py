@@ -11,7 +11,7 @@ Tests cover:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -24,11 +24,9 @@ from extraction.decision_extractor import (
 )
 from shared.models import (
     CONFIDENCE_DISCARD,
-    CONFIDENCE_REVIEW,
     DecisionEvent,
     RawEvent,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -47,7 +45,7 @@ def _make_raw_event(content: str, source: str = "slack") -> RawEvent:
         content=content,
         author="U12345",
         channel="C-engineering",
-        timestamp=datetime(2026, 5, 11, 12, 0, 0),
+        timestamp=datetime(2026, 5, 11, 12, 0, 0, tzinfo=UTC),
     )
 
 

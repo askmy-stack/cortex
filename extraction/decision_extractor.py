@@ -21,7 +21,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime
 from typing import Any
 
 import structlog
@@ -32,7 +31,6 @@ from shared.models import (
     CONFIDENCE_DISCARD,
     CONFIDENCE_REVIEW,
     DecisionEvent,
-    EventType,
     Provenance,
     RawEvent,
 )

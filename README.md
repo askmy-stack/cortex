@@ -125,38 +125,103 @@ When any agent touches the payments service, Cortex enriches its context automat
 
 ## Quickstart
 
+**Fastest path — seeded demo (recommended):**
+
 ```bash
-# Clone
 git clone https://github.com/askmy-stack/cortex
 cd cortex
-
-# Configure
-cp .env.example .env
-# Add: SLACK_BOT_TOKEN, GITHUB_TOKEN, OPENAI_API_KEY (or use local Ollama)
-
-# Run
-docker-compose up -d
-
-# Connect your first tool
-python scripts/connect_slack.py --workspace your-workspace
-
-# Open dashboard
+cp .env.example .env   # optional; compose defaults work for local demo
+make demo              # infra + migrations + seed + API + worker + dashboard
 open http://localhost:3000
 ```
 
-**Add to any MCP-compatible agent (Claude, Cursor):**
+On the dashboard, open **Ask**, use workspace `local-dev`, and try: *Why CockroachDB for payments?*
+
+### Manual setup
+
+```bash
+# Core infra (Kafka, Neo4j, Redis, Postgres)
+docker compose up -d
+
+# API + pipeline worker + dashboard (production-like via Docker)
+docker compose --profile api --profile frontend up -d --build
+
+# Connect Slack (optional — requires tokens in .env)
+python scripts/connect_slack.py --workspace your-workspace
+```
+
+**UI development (hot reload):** `cd frontend && npm run dev` → [http://localhost:5173](http://localhost:5173)  
+**Docker dashboard:** [http://localhost:3000](http://localhost:3000) (rebuild frontend image after UI changes — see note below)
+
+### One-command demo (details)
+
+From the repo root, with Docker running:
+
+```bash
+cp .env.example .env   # optional if you rely on compose defaults
+make demo              # or: bash scripts/demo.sh
+```
+
+This brings up Kafka, Neo4j, Redis, Postgres, applies graph migrations, writes two demo `Decision` nodes (CockroachDB migration story + Redis session cache), starts the API, pipeline worker, and dashboard, then runs a sample `POST /query`. Open [http://localhost:3000](http://localhost:3000) and use **Ask** with workspace `local-dev` and a question like `Why CockroachDB for payments?`.
+
+**Dashboard looks stale?** The UI is served from a Docker image on port **3000**. Rebuild with `docker compose --profile api --profile frontend build frontend && docker compose --profile api --profile frontend up -d --force-recreate frontend`, then hard-refresh the browser (`Cmd+Shift+R`). For hot reload during UI work, run `cd frontend && npm run dev` → [http://localhost:5173](http://localhost:5173) (dev server uses **5173** so it does not clash with Docker).
+
+**Recording a video or GIF for the README:** see [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md). **Validating real webhooks (Slack / GitHub / Jira):** [docs/CONNECTOR_VALIDATION.md](docs/CONNECTOR_VALIDATION.md).
+
+### Context API (REST)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/health` | Liveness and dependency checks (Neo4j, Redis) |
+| `POST` | `/query` | Decision search (Neo4j full-text + optional Qdrant merge when `CORTEX_SEMANTIC_ENABLED=true`) |
+| `POST` | `/inject` | Ranked context for agents |
+| `GET` | `/contradictions/pending` | Pending contradiction review items (`workspace_id` query param; `X-Cortex-Roles` for RBAC) |
+| `GET` | `/decisions/by-system/{system_id}` | Recent decisions affecting a service |
+| `GET` | `/decisions/{id}/chain` | SUPERSEDES / trigger lineage |
+| `GET` | `/decisions/{id}/conflicts` | Contradiction preview on shared systems |
+| `POST` | `/remember` | Submit explicit memory → Kafka → extractor → graph |
+| `POST` | `/webhooks/slack`, `/github`, `/jira`, `/linear` | Connector ingress → Kafka |
+
+Use `docker compose --profile api up` to build the API and pipeline worker, or run `uvicorn api.main:app --reload` from the repo root with services in `.env`.
+
+**Python SDK:**
+
+```python
+from sdk import CortexClient
+
+client = CortexClient("http://localhost:8000")
+print(client.query("Why CockroachDB?", workspace_id="local-dev"))
+client.remember("We use Redis for session cache.", workspace_id="local-dev")
+```
+
+**Add to any MCP-compatible agent (Claude, Cursor) — stdio server in `mcp/`:**
 
 ```json
 {
   "mcpServers": {
     "cortex": {
-      "url": "http://localhost:8000/mcp"
+      "command": "node",
+      "args": ["/path/to/Cortex/mcp/server.js"],
+      "env": { "CORTEX_API_URL": "http://localhost:8000" }
     }
   }
 }
 ```
 
-That's it. Every agent in your org now has organizational memory.
+Tools: `cortex_query`, `cortex_inject`, `cortex_remember`.
+
+### Dashboard
+
+The web UI is aimed at engineers, PMs, and operators — not only developers reading JSON.
+
+| Area | What it does |
+|------|----------------|
+| **Home** | Product overview + API health |
+| **Ask** | Natural-language search over organizational memory |
+| **Memory map** | Relationship graph, timeline, decision lineage |
+| **For agents** | Preview what `POST /inject` would send to an MCP client |
+| **Review** | Pending contradiction queue |
+| **Cortex Guide** | In-app assistant that explains results in plain language |
 
 ---
 
@@ -187,13 +252,12 @@ cortex/
 ├── scoring/              # Importance scorer, trust scorer, coverage scorer
 ├── graph/                # Neo4j schema, migrations, Cypher queries
 │   └── migrations/       # V001__initial_schema.cypher, etc.
-├── memory/               # Memory fabric — read/write layer
+├── pipeline/             # Kafka extraction worker (raw → graph)
+├── memory/               # Episodic (Timescale) + semantic (Qdrant) helpers
 ├── intelligence/         # Contradiction detector, decay engine, outcome linker
 ├── api/                  # FastAPI application
 ├── mcp/                  # MCP server (TypeScript)
-├── sdk/
-│   ├── python/           # cortex-py
-│   └── typescript/       # cortex-ts
+├── sdk/                  # Python client (query, inject, remember)
 ├── frontend/             # React dashboard
 ├── infrastructure/       # Terraform, Docker configs
 ├── tests/
@@ -222,7 +286,7 @@ cortex/
 | API | FastAPI + JWT |
 | MCP server | TypeScript (MCP SDK) |
 | Agent runtime | LangGraph |
-| Frontend | React + D3.js (graph explorer) |
+| Frontend | React + Vite (dashboard: Ask, memory map, Cortex Guide) |
 | IaC | Terraform + AWS ECS |
 | Observability | Prometheus + Grafana |
 | ML tracking | MLflow |
@@ -234,16 +298,19 @@ cortex/
 
 | Phase | Scope | Status |
 |---|---|---|
-| Phase 1 | Kafka + Slack connector + decision extractor | 🔄 In progress |
-| Phase 2 | GitHub + Jira connectors + Neo4j graph schema | ⏳ Planned |
-| Phase 3 | `cortex.query()` API + Redis cache + MCP server | ⏳ Planned |
-| Phase 4 | Importance scorer + trust scorer + RBAC | ⏳ Planned |
-| Phase 5 | Contradiction detector + decay engine | ⏳ Planned |
-| Phase 6 | React dashboard + graph explorer | ⏳ Planned |
-| Phase 7 | Open-source launch | ⏳ Planned |
+| Phase 0 | Architecture + documentation | ✅ Done |
+| Phase 1 | Kafka + Slack connector + decision extractor | ✅ Core shipped |
+| Phase 2 | GitHub + Jira + Linear connectors + Neo4j graph | ✅ Shipped (webhooks → Kafka → worker) |
+| Phase 3 | REST API (`/query`, `/inject`) + MCP + Python SDK | ✅ Shipped |
+| Phase 4 | Importance + trust scoring + graph RBAC | ✅ Shipped |
+| Phase 5 | Contradiction detector + decay engine | ✅ Shipped |
+| Phase 6 | React dashboard (Ask, memory map, guide, agent inject) | ✅ Shipped |
+| Phase 7 | Demo video + open-source launch polish | 🔄 In progress |
 | Phase 8 | Outcome tracking + coverage scoring | ⏳ Post-launch |
 | Phase 9 | Elicitation bot (implicit knowledge) | ⏳ Post-launch |
 | Phase 10 | Federated cross-org memory | ⏳ v2 |
+
+**CI:** GitHub Actions runs `pytest` + seed dry-run on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ---
 

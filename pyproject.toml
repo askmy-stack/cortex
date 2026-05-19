@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "cortex"
@@ -65,7 +65,17 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["connectors*", "extraction*", "scoring*", "graph*", "memory*", "intelligence*", "api*"]
+include = [
+    "connectors*",
+    "extraction*",
+    "scoring*",
+    "graph*",
+    "memory*",
+    "intelligence*",
+    "api*",
+    "pipeline*",
+    "sdk*",
+]
 
 [tool.ruff]
 target-version = "py311"

@@ -119,6 +119,55 @@
 4. First extraction test: run 10 real Slack messages through GPT-4o → verify decision event schema
 5. Validate Neo4j schema against real extracted events — adjust before writing graph loader
 
+---
+
+## Session 1 — 2026-05-11
+**Duration:** ~3h
+**Phase:** Phase 1 — Infrastructure + Slack connector + Decision extractor
+
+### Built
+
+- Renamed `CORTEX_*.md` → canonical doc names (`README.md`, `CLAUDE.md`, etc.)
+- `.gitignore` — Python, Node, Docker, Terraform, secrets
+- `.env.example` — all 30+ environment variables documented
+- `pyproject.toml` — full Python dependency set, ruff, mypy, pytest config
+- `docker-compose.yml` — 10 services: Zookeeper, Kafka, Kafka-UI, Neo4j 5, PostgreSQL 15, TimescaleDB, Qdrant v1.9, Redis 7, MLflow, Prometheus, Grafana. API/MCP/Frontend behind Docker profiles.
+- `infrastructure/docker/prometheus.yml` — Prometheus scrape config
+- `infrastructure/docker/grafana/provisioning/` — Grafana datasource provisioning
+- `shared/models.py` — RawEvent, DecisionEvent, Provenance Pydantic v2 schemas. Threshold constants.
+- `connectors/slack/producer.py` — normalise_slack_event(), SlackKafkaProducer, SlackConnector
+- `extraction/decision_extractor.py` — DecisionExtractor with GPT-4o/Ollama dual backend, content-hash cache
+- `graph/migrations/V001–V005` — full Neo4j schema (constraints, RBAC, temporal edges, outcome nodes, coverage indices)
+- `graph/migrate.py` — idempotent migration runner
+- `tests/connectors/test_slack_producer.py` — 30 tests
+- `tests/extraction/test_decision_extractor.py` — 34 tests (20 message samples)
+- Git repository initialised: main → dev → feature/phase-1-infrastructure → merged to dev
+
+### State at end
+- 64 tests passing, 0 warnings, 0 failures
+- All Phase 1 code deliverables complete
+- No Docker services running (infrastructure not started yet — Slack app tokens needed)
+- Neo4j schema not yet applied (requires running Neo4j container)
+
+### Decisions made
+- P-001 resolved: TypeScript for MCP server (already in architecture spec)
+- Using timezone-aware datetimes throughout (Python 3.12+ deprecation avoided)
+
+### Blockers
+- Slack app not yet created (need OAuth tokens for live connector test)
+- Ollama must be running locally for dev extraction tests (non-mocked path)
+
+### Mistakes found
+- `pyproject.toml` had incorrect build backend (`setuptools.backends.legacy:build` → `setuptools.build_meta`)
+- `json` import left in `connectors/slack/producer.py` — removed
+
+### Next session starts with
+1. `scripts/connect_slack.py` — OAuth setup helper
+2. `connectors/github/producer.py` — GitHub webhook connector (Phase 2)
+3. `connectors/jira/producer.py` — Jira connector (Phase 2)
+4. `graph/writer.py` — DecisionEvent → Neo4j write layer
+5. `api/main.py` — FastAPI skeleton with /health endpoint (Phase 3 prep)
+
 [OWNER NOTES]
 - Cortex emerged as the second major portfolio project alongside Meridian
 - Core insight: the market gap between memory systems (Mem0, Zep) and enterprise search (Glean, Dust) is exactly where Cortex sits — confirmed by Foundation Capital context graph thesis
@@ -126,3 +175,121 @@
 - MCP adoption by OpenAI, Google, Microsoft (2025) makes MCP server the right distribution mechanism
 - Demo scenario: new engineer asks Cursor "why CockroachDB?" → full decision history returned in 3 seconds
 - This project targets AI Infrastructure Engineer roles — different hiring pool from Meridian (Data/MLOps)
+
+---
+
+## Session 2 — 2026-05-14
+**Duration:** ~2h
+**Phase:** Phases 3–6 (API, intelligence, semantic/episodic hooks, dashboard)
+
+### Built
+- `intelligence/contradiction_detector.py` — overlap + negation heuristics, Neo4j `Contradiction` nodes, Kafka `cortex.intelligence.contradictions`
+- `intelligence/decay_engine.py` — batch importance decay by age (`python -m intelligence.decay_engine`)
+- `graph/migrations/V006__contradiction_nodes.cypher` — contradiction constraints and index
+- `api/contradictions.py` — `GET /contradictions/pending` human review queue
+- `graph/query.py` — `fetch_decisions_by_ids` for hybrid retrieval
+- `memory/episodic.py` — optional Timescale append for `RawEvent`
+- `memory/semantic.py` — optional Qdrant upsert + search when `CORTEX_SEMANTIC_ENABLED=true`
+- `api/memory.py` — merges semantic hits with full-text graph results
+- `pipeline/extraction_worker.py` — episodic append, Qdrant upsert, post-write contradiction pass (toggle `CORTEX_CONTRADICTION_ENABLED`)
+- `frontend/` — Vite + React dashboard (health + links), production Docker image with nginx
+- Tests: `tests/intelligence/*`, contradictions API test, conftest disables contradiction Neo4j in unit tests by default
+
+### State at end
+- 207 pytest tests passing
+- Phase 7 launch items (video, HN post) remain manual owner tasks
+
+### Next session starts with
+1. ~~Run `python -m graph.migrate` (apply V006)~~ — superseded: migrations through **V007**; use `make demo` or `python -m graph.migrate` after schema changes (see Session 4).
+2. `docker compose --profile api up` and validate **webhook → worker → graph** on a dev workspace (Slack/GitHub tokens in `.env`).
+3. Phase 7: screen recording + README GIF — follow [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md).
+
+---
+
+## Session 3 — 2026-05-14
+**Duration:** ~45m
+**Phase:** Demo readiness (Phase 7 prep — automation, not video)
+
+### Built
+- `scripts/demo.sh` — Docker up (Kafka, Neo4j, Redis, Postgres), `graph.migrate` + `seed_demo` inside `api` image (`NEO4J_URI=bolt://neo4j:7687`), `api` + `pipeline-worker` + `frontend`, curl smoke on `POST /query`
+- `scripts/seed_demo.py` — idempotent `DecisionEvent` pair (CockroachDB migration + Redis session cache) via `GraphWriter`; `scripts/__init__.py` for test imports
+- `Makefile` — `demo`, `demo-dry-run` (`uv run`), `test` (`uv run pytest`)
+- `api/Dockerfile` — `COPY scripts ./scripts` so migrate/seed run in-container without bind mounts
+- `frontend/src/App.tsx` + `index.css` — **Query memory** form (`/query`); contradictions link uses workspace field
+- `README.md` — **One-command demo** subsection (`make demo` / `bash scripts/demo.sh`)
+- `tests/scripts/test_seed_demo.py` — stable UUID + decision field assertions (no Neo4j)
+
+### State at end
+- Demo automation landed; runtime fixes deferred to Session 4 (compose in-container URIs, migration runner, fulltext repair).
+
+### Next session starts with
+1. Superseded by **Session 4** (reliability + CI + recording checklist).
+
+---
+
+## Session 4 — 2026-05-14
+**Duration:** ~1h
+**Phase:** Demo reliability + CI + Phase 7 prep (documentation)
+
+### Built
+- `docker-compose.yml` — `api` / `pipeline-worker` **environment** overrides: `NEO4J_URI=bolt://neo4j:7687`, `REDIS_HOST=redis`, `KAFKA_BOOTSTRAP_SERVERS=kafka:29092` (`.env` defaults target host-local dev only)
+- `neo4j` service — stable **`hostname: neo4j`** + **`extra_hosts`** so `InetAddress.getLocalHost()` resolves (fixes crash loop on some Docker setups); Neo4j 5 **server.memory.*** env keys
+- `graph/query.py` — full-text bind param renamed to **`$search_text`** (Neo4j async `session.run` reserves `query`)
+- `graph/migrate.py` — **`_strip_leading_comments`** so semicolon-split chunks with leading `//` still execute the first `CREATE`/`MERGE` (fixes skipped V005 fulltext)
+- `graph/migrations` — **V007** fulltext repair; **V001–V006** `SchemaVersion` **MERGE (v {version}) SET** (stable identity); **V001** dropped Enterprise-only property-existence constraint for Neo4j Community
+- `.github/workflows/ci.yml` — **pytest** + **`scripts/seed_demo.py --dry-run`** on Python 3.11
+- `tests/graph/test_migrate_strip.py` — unit tests for migration chunk stripping
+- `docs/DEMO_RECORDING.md` — Phase 7 recording / GIF checklist; README links to it
+- `docs/CONNECTOR_VALIDATION.md` — webhook → Kafka validation steps (GitHub / Slack / Jira); README links to it
+
+### State at end
+- **213** pytest passes; CI workflow ready for GitHub Actions on `main` / `develop` / PRs
+
+### Next session starts with
+1. **Owner:** Record demo + GIF per [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md); add link in README when hosted
+2. **Live connector path:** Slack (or GitHub) webhook → Kafka → worker → graph on a real workspace (tokens in `.env`)
+3. **Optional:** Slim `api` Docker image (extras in `pyproject.toml`) so CI/local `docker compose build` is not dominated by Torch/spaCy unless needed for that image
+
+---
+
+## Session 5 — 2026-05-14
+**Duration:** ~20m
+**Phase:** Phase 1 / demo UX (frontend dashboard)
+
+### Built
+- `frontend/src/index.css` — repaired broken `:root` / universal selector block after a bad `@import` move; **`@import` (DM Sans) is first**, then full CSS variables and `*, *::before, *::after { box-sizing }`
+- `frontend/src/App.tsx` — **`apiBase`** resolves to trimmed `VITE_API_URL` without trailing slash, else **`http://localhost:8000`**, so `fetch()` and Tools links hit the API instead of the Vite origin when env is unset
+
+### State at end
+- `npm run build` (frontend) succeeds
+
+### Next session starts with
+1. Same as Session 4 “Next session” (owner demo recording, live connector validation)
+2. Optional: smoke `npm run dev` + API with tabs (overview, search, inject, review, tools)
+
+---
+
+## Session 6 — 2026-05-18
+**Duration:** ~1h
+**Phase:** Gap closure vs external review — graph reads, Linear, SDK, tests
+
+### Built
+- `graph/query.py` — `find_decisions_by_system`, `trace_causal_chain`, `find_conflict_candidates` (+ RBAC)
+- `api/schemas.py`, `api/deps.py` — shared models/deps (avoids circular imports)
+- `api/decisions.py` — `GET /decisions/by-system/{id}`, `/{id}/chain`, `/{id}/conflicts`
+- `api/remember.py` — `POST /remember` → `cortex.raw.manual.events`
+- `sdk/client.py` — `CortexClient` (`query`, `inject`, `remember`, `decisions_by_system`, `causal_chain`)
+- `connectors/linear/producer.py` + `POST /webhooks/linear`
+- `pipeline/extraction_worker.py` — consumes `cortex.raw.linear.events` + `cortex.raw.manual.events`
+- `mcp/server.js` — `cortex_remember` tool
+- Tests: graph query, decisions API, remember, linear connector, SDK, pipeline failures, webhook security
+- `shared/models.py` — `manual` source for API-submitted memory
+- README / `.env.example` — API table, SDK snippet, correct MCP stdio config
+
+### State at end
+- **228** pytest passes (~80% coverage)
+
+### Next session starts with
+1. Owner demo recording ([docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md))
+2. Live webhook validation with real Slack/GitHub/Linear tokens
+3. Optional: graph explorer UI tab calling `/decisions/.../chain`

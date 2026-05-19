@@ -22,7 +22,6 @@ from connectors.slack.producer import (
 )
 from shared.models import RawEvent
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
@@ -205,6 +204,7 @@ class TestSlackKafkaProducer:
         mock_producer_cls.return_value = mock_producer
 
         producer = SlackKafkaProducer(bootstrap_servers="localhost:9092")
+        mock_producer.flush.return_value = 0
         producer.close()
 
         mock_producer.flush.assert_called_once()

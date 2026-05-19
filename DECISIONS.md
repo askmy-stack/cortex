@@ -25,7 +25,7 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ### 2026-05-11 — Build Phase 1: Core infrastructure + Slack connector
 Priority: HIGH
-Status: OPEN
+Status: DONE — Session 1 (2026-05-11)
 Detail:
 - Write `docker-compose.yml`: Kafka, Zookeeper, Neo4j 5, TimescaleDB, Qdrant, Redis, MLflow, Prometheus, Grafana
 - Port map: Neo4j 7474/7687, Kafka 9092, Redis 6379, Qdrant 6333, API 8000, Frontend 3000, Grafana 3001
@@ -208,11 +208,44 @@ access_policy: {
 
 ---
 
+### D-013 — 2026-05-14 — Consolidated raw Kafka topics for GitHub and Jira
+**Status:** Active
+**Decision:** GitHub and Jira connectors publish to `cortex.raw.github.events` and `cortex.raw.jira.events` respectively (single topic per source) instead of per-event-type topics (`cortex.raw.github.prs`, etc.).
+**Rationale:** Fewer consumer groups and simpler operations for the MVP pipeline worker. Event type is carried in `RawEvent.event_type`. The extraction worker subscribes to all raw topics in one group. Architecture tables in docs are updated to list both the canonical per-type names (for future scaling) and the implemented consolidated names.
+**Alternatives rejected:** Many topics per event type (higher ops burden for MVP replay testing).
+**Owner:** Abhinaysai
+
+---
+
+### D-014 — 2026-05-14 — Turnkey local demo path (script + seeded graph)
+**Status:** Active
+**Decision:** Ship `scripts/demo.sh` + `make demo` as the canonical zero-to-query path: Compose brings core deps, migrations and `scripts/seed_demo.py` run inside the `api` image with `NEO4J_URI=bolt://neo4j:7687`, then API/worker/frontend start and a smoke `POST /query` runs from the host. Demo decisions use deterministic UUIDv5 ids so re-seeding is idempotent.
+**Rationale:** Portfolio demos must not depend on Slack OAuth or manual Kafka injection. Seeding via `GraphWriter` keeps the graph schema identical to production writes. Docker-only migrate/seed avoids “install Python deps on host” friction.
+**Alternatives rejected:** Seed-only Cypher without writer (schema drift risk); requiring host `pip install -e .` before every demo (higher friction than Compose-only).
+
+---
+
+### D-015 — 2026-05-14 — GitHub Actions CI + migration runner + query driver fix
+**Status:** Active
+**Decision:** Ship `.github/workflows/ci.yml` on `push`/`pull_request` to `main`, `master`, and `develop`: Python 3.11, `pip install -e ".[dev]"`, `pytest tests/`, then `python scripts/seed_demo.py --dry-run`. Harden `graph/migrate.py` with `_strip_leading_comments` so semicolon-split chunks that begin with file header comments still execute embedded DDL (fixes skipped fulltext in V005-style files). Rename full-text Cypher parameter to `$search_text` and pass `search_text=` into `AsyncSession.run` to avoid clashing with the driver’s reserved `query` keyword. Compose sets `NEO4J_URI`, `REDIS_HOST`, and `KAFKA_BOOTSTRAP_SERVERS` for `api` and `pipeline-worker` so in-container processes do not use `.env` host defaults.
+**Rationale:** CI without Docker keeps PRs fast; dry-run validates demo packaging; migration and driver bugs blocked `/query` after demo came up; service DNS overrides fix health vs graph mismatch inside containers.
+**Alternatives rejected:** Running full `docker compose build api` on every CI run until a slim API image exists (too slow for free-tier runners).
+
+---
+
+### D-016 — 2026-05-14 — Vite dashboard default API origin
+**Status:** Active
+**Decision:** When `VITE_API_URL` is unset or empty after trim, the React dashboard uses **`http://localhost:8000`** as the API origin for all `fetch()` calls and Tools panel links (OpenAPI, `/health`). Strip a single trailing slash from configured URLs.
+**Rationale:** Relative `fetch("/health")` from `http://localhost:3000` hits the Vite dev server, not FastAPI, which breaks Overview and every tab without an `.env` file. Explicit default matches `docker-compose` port mapping and demo docs.
+**Alternatives rejected:** Proxy-only (requires Vite config changes and differs from production); mandatory `.env` (extra friction for `npm run dev`).
+
+---
+
 ## PENDING DECISIONS (need resolution before build)
 
 | # | Decision needed | Options | Deadline | Status |
 |---|---|---|---|---|
-| P-001 | MCP server language | TypeScript (MCP SDK native) / Python (FastMCP) | Before Phase 3 | Open |
+| P-001 | MCP server language | TypeScript (MCP SDK native) / Python (FastMCP) | Before Phase 3 | **RESOLVED: TypeScript** |
 | P-002 | Local Slack message storage for testing | Real Slack workspace / Slack test fixture files | Before Phase 1 | Open |
 | P-003 | Neo4j hosting for production | Neo4j AuraDB free tier / Self-hosted EC2 | Before Phase 7 | Open |
 | P-004 | Dashboard visualization library | D3.js (full control) / React Flow (faster) | Before Phase 6 | Open |
