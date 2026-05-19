@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import os
-from typing import Any
-
 import structlog
-from fastapi import APIRouter, Header, Query
-from neo4j import GraphDatabase
+from fastapi import APIRouter, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from graph.rbac import can_access, normalize_access_policy
+from api.deps import caller_roles, memory
 
 log = structlog.get_logger(__name__)
 
@@ -28,57 +24,33 @@ class ContradictionItem(BaseModel):
     status: str = "pending"
 
 
-def _caller_roles(x_cortex_roles: str | None) -> list[str]:
-    if not x_cortex_roles:
-        return ["authenticated"]
-    return [role.strip() for role in x_cortex_roles.split(",") if role.strip()]
-
-
 @router.get("/pending", response_model=list[ContradictionItem])
-def list_pending_contradictions(
+async def list_pending_contradictions(
     workspace_id: str = Query(..., description="Cortex workspace identifier"),
     x_cortex_roles: str | None = Header(default=None, alias="X-Cortex-Roles"),
 ) -> list[ContradictionItem]:
-    """Return pending contradictions for human review."""
-    roles = _caller_roles(x_cortex_roles)
-    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "cortex_local")
-    driver = GraphDatabase.driver(uri, auth=(user, password))
+    """Return pending contradictions for human review.
 
-    cypher = """
-    MATCH (c:Contradiction {workspace_id: $workspace_id, status: 'pending'})
-    OPTIONAL MATCH (c)-[:INVOLVES_NEW]->(n:Decision)
-    OPTIONAL MATCH (c)-[:INVOLVES_PRIOR]->(p:Decision)
-    RETURN c.id AS id,
-           c.score AS score,
-           c.explanation AS explanation,
-           c.access_policy AS access_policy,
-           n.id AS new_id,
-           p.id AS prior_id,
-           c.status AS status
-    ORDER BY c.score DESC
+    Uses the shared async Neo4j driver (see ``MemoryService``) — no per-request
+    connection is opened. RBAC filtering is enforced inside the graph layer.
     """
-
-    items: list[ContradictionItem] = []
+    roles = caller_roles(x_cortex_roles)
     try:
-        with driver.session() as session:
-            for record in session.run(cypher, workspace_id=workspace_id):
-                policy = normalize_access_policy(record.get("access_policy"))
-                if not can_access(policy, roles):
-                    continue
-                items.append(
-                    ContradictionItem(
-                        id=str(record["id"]),
-                        score=float(record["score"] or 0.0),
-                        explanation=str(record["explanation"] or ""),
-                        new_decision_id=record.get("new_id"),
-                        prior_decision_id=record.get("prior_id"),
-                        status=str(record.get("status") or "pending"),
-                    )
-                )
-    finally:
-        driver.close()
+        rows = await memory().pending_contradictions(
+            workspace_id=workspace_id,
+            caller_roles=roles,
+        )
+    except Exception as exc:
+        log.error("contradictions.pending.failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Contradiction queue unavailable",
+        ) from exc
 
-    log.info("contradictions.pending.list", workspace_id=workspace_id, count=len(items))
+    items = [ContradictionItem(**row) for row in rows]
+    log.info(
+        "contradictions.pending.list",
+        workspace_id=workspace_id,
+        count=len(items),
+    )
     return items

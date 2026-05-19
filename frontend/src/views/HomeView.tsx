@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchHealth } from "../api/client";
 import type { Health } from "../types";
 import { useApp } from "../context/AppContext";
+import { Skeleton } from "../components/ui/Skeleton";
+import { StateView } from "../components/ui/StateView";
 
 export function HomeView() {
   const { setView, pushMessage } = useApp();
@@ -38,14 +40,21 @@ export function HomeView() {
           institutional knowledge searchable for people and AI agents.
         </p>
         <div className="hero__actions">
-          <button type="button" className="btn btn--primary btn--lg" onClick={() => setView("ask")}>
+          <button
+            type="button"
+            className="btn btn--primary btn--lg"
+            onClick={() => setView("ask")}
+          >
             Ask a question
           </button>
           <button
             type="button"
             className="btn btn--ghost"
             onClick={() => {
-              pushMessage("assistant", "Cortex stores **decisions** with who made them, which systems they affect, and why — so you never lose context when people leave or tools change.");
+              pushMessage(
+                "assistant",
+                "Cortex stores **decisions** with who made them, which systems they affect, and why — so you never lose context when people leave or tools change.",
+              );
             }}
           >
             How it works
@@ -71,25 +80,52 @@ export function HomeView() {
         </article>
       </section>
 
-      <section className="panel">
+      <section className="panel" aria-labelledby="home-health">
         <header className="panel__head">
-          <h2>System health</h2>
-          <button type="button" className="btn btn--secondary" onClick={() => void load()} disabled={loading}>
+          <h2 id="home-health">System health</h2>
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={() => void load()}
+            disabled={loading}
+            aria-label="Refresh system health"
+          >
             {loading ? "Checking…" : "Refresh"}
           </button>
         </header>
         {error ? (
-          <p className="alert alert--error">
-            Cannot reach the API. Run <code>make demo</code> and ensure the API is on port 8000.
+          <StateView
+            tone="error"
+            icon="!"
+            title="Cannot reach the API"
+            action={
+              <button type="button" className="btn btn--secondary" onClick={() => void load()}>
+                Retry
+              </button>
+            }
+          >
+            Run <code>make demo</code> and make sure the API is on port 8000.
             <br />
-            <small>{error}</small>
-          </p>
+            <small className="muted">{error}</small>
+          </StateView>
+        ) : null}
+        {loading && !health ? (
+          <ul className="health-strip" aria-hidden>
+            {Array.from({ length: 4 }, (_, i) => (
+              <li key={i} style={{ minWidth: "5rem" }}>
+                <Skeleton variant="text" width="3.5rem" />
+                <Skeleton variant="title" width="2.5rem" />
+              </li>
+            ))}
+          </ul>
         ) : null}
         {health ? (
           <ul className="health-strip">
             <li>
               <span>API</span>
-              <strong className={health.status === "ok" ? "text-ok" : "text-bad"}>{health.status}</strong>
+              <strong className={health.status === "ok" ? "text-ok" : "text-bad"}>
+                {health.status}
+              </strong>
             </li>
             <li>
               <span>Version</span>

@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { memo, useId, useState } from "react";
 import type { DecisionResult } from "../../types";
 import { formatRelativeTime, formatSource } from "../../lib/format";
 import { ScoreRing } from "../ui/ScoreRing";
@@ -10,7 +10,7 @@ type Props = {
   selected?: boolean;
 };
 
-export function DecisionCard({ decision: d, defaultOpen, onSelect, selected }: Props) {
+function DecisionCardInner({ decision: d, defaultOpen, onSelect, selected }: Props) {
   const [open, setOpen] = useState(!!defaultOpen);
   const panelId = useId();
 
@@ -25,8 +25,11 @@ export function DecisionCard({ decision: d, defaultOpen, onSelect, selected }: P
       >
         <span className="decision-card__type">{d.event_type}</span>
         <h3 className="decision-card__title">{d.content}</h3>
-        <span className="decision-card__chevron" aria-hidden>
-          {open ? "−" : "+"}
+        <span
+          className={`decision-card__chevron ${open ? "decision-card__chevron--open" : ""}`}
+          aria-hidden
+        >
+          ▾
         </span>
       </button>
 
@@ -100,3 +103,14 @@ export function DecisionCard({ decision: d, defaultOpen, onSelect, selected }: P
     </article>
   );
 }
+
+// Lists of 10+ cards re-rendered on unrelated context updates; memo keeps the
+// expensive markup stable when neither the decision nor the selection changes.
+export const DecisionCard = memo(DecisionCardInner, (prev, next) => {
+  return (
+    prev.decision === next.decision &&
+    prev.selected === next.selected &&
+    prev.defaultOpen === next.defaultOpen &&
+    prev.onSelect === next.onSelect
+  );
+});

@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { queryMemory } from "../api/client";
 import { useApp } from "../context/AppContext";
 import { summarizeQueryResults } from "../lib/assistant";
 import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
+import { Skeleton } from "../components/ui/Skeleton";
+import { StateView } from "../components/ui/StateView";
 
 const EXAMPLES = [
   "Why CockroachDB for payments?",
   "Redis session cache checkout",
   "What affects payments-service?",
 ];
+
+const ENTITY_PREFIXES = ["person:", "system:"];
 
 export function AskView() {
   const {
@@ -26,7 +30,14 @@ export function AskView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function search() {
+  // Debounce the character counter so rapid typing doesn't churn React.
+  const [debouncedLength, setDebouncedLength] = useState(query.trim().length);
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedLength(query.trim().length), 200);
+    return () => window.clearTimeout(handle);
+  }, [query]);
+
+  const search = useCallback(async () => {
     const q = query.trim();
     if (q.length < 3) {
       setError("Please enter at least 3 characters.");
@@ -50,14 +61,52 @@ export function AskView() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [
+    query,
+    limit,
+    workspaceId,
+    pushMessage,
+    setLastQuery,
+    setExploreDecisions,
+    setSelectedDecisionId,
+  ]);
+
+  const handleCardSelect = useCallback(
+    (id: string) => {
+      // Chip clicks pass `person:<id>` / `system:<id>`; keep the original decision
+      // focused so the memory map highlights the right node.
+      if (ENTITY_PREFIXES.some((p) => id.startsWith(p))) {
+        const firstId = lastQuery?.results[0]?.event_id;
+        if (firstId) setSelectedDecisionId(firstId);
+      } else {
+        setSelectedDecisionId(id);
+      }
+      setView("explore");
+    },
+    [lastQuery, setSelectedDecisionId, setView],
+  );
+
+  const results = lastQuery?.results ?? [];
+  const resultList = useMemo(
+    () =>
+      results.map((d, i) => (
+        <DecisionCard
+          key={d.event_id}
+          decision={d}
+          defaultOpen={i === 0}
+          onSelect={handleCardSelect}
+        />
+      )),
+    [results, handleCardSelect],
+  );
 
   return (
     <article className="view view--ask fade-in">
       <header className="view__header">
         <h1>Ask your organization</h1>
         <p className="view__subtitle">
-          Natural language search over captured decisions — who decided, what systems are affected, and why.
+          Natural language search over captured decisions — who decided, what systems are
+          affected, and why.
         </p>
       </header>
 
@@ -80,9 +129,10 @@ export function AskView() {
               void search();
             }
           }}
+          aria-describedby="ask-hint"
         />
-        <p className="field-hint">
-          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to search · {query.trim().length} characters
+        <p className="field-hint" id="ask-hint">
+          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to search · {debouncedLength} characters
         </p>
 
         <p className="field-label">Try an example</p>
@@ -103,45 +153,58 @@ export function AskView() {
               max={20}
               className="input input--narrow"
               value={limit}
-              onChange={(e) => setLimit(Math.min(20, Math.max(1, Number(e.target.value) || 8)))}
+              onChange={(e) =>
+                setLimit(Math.min(20, Math.max(1, Number(e.target.value) || 8)))
+              }
             />
           </label>
-          <button type="button" className="btn btn--primary" onClick={() => void search()} disabled={loading}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => void search()}
+            disabled={loading}
+          >
             {loading ? "Searching memory…" : "Search memory"}
           </button>
         </footer>
       </section>
 
-      {error ? <p className="alert alert--error">{error}</p> : null}
+      {error ? (
+        <StateView tone="error" icon="!" title="Search failed">
+          {error}
+        </StateView>
+      ) : null}
+
+      {loading && !lastQuery ? (
+        <section className="panel" aria-live="polite">
+          <header className="panel__head">
+            <h2 style={{ width: "100%" }}>
+              <Skeleton variant="title" />
+            </h2>
+          </header>
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </section>
+      ) : null}
 
       {lastQuery ? (
-        <section className="results panel fade-in">
+        <section className="results panel fade-in" aria-live="polite">
           <header className="panel__head">
             <h2>
-              {lastQuery.total} result{lastQuery.total === 1 ? "" : "s"} · {lastQuery.latency_ms}ms
+              {lastQuery.total} result{lastQuery.total === 1 ? "" : "s"} ·{" "}
+              {lastQuery.latency_ms}ms
             </h2>
             <button type="button" className="btn btn--ghost" onClick={() => setView("explore")}>
               Open memory map →
             </button>
           </header>
-          {lastQuery.results.length === 0 ? (
-            <p className="empty">
-              No memories matched. Run <code>make demo</code> to seed example decisions for <code>local-dev</code>.
-            </p>
+          {results.length === 0 ? (
+            <StateView icon="◇" title="No memories matched">
+              Try a broader query, or run <code>make demo</code> to seed example decisions
+              for <code>local-dev</code>.
+            </StateView>
           ) : (
-            <div className="decision-list">
-              {lastQuery.results.map((d, i) => (
-                <DecisionCard
-                  key={d.event_id}
-                  decision={d}
-                  defaultOpen={i === 0}
-                  onSelect={(id) => {
-                    setSelectedDecisionId(id.startsWith("person:") || id.startsWith("system:") ? lastQuery.results[0]?.event_id ?? id : id);
-                    setView("explore");
-                  }}
-                />
-              ))}
-            </div>
+            <div className="decision-list">{resultList}</div>
           )}
         </section>
       ) : null}

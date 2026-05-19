@@ -1,12 +1,30 @@
+import { Suspense, lazy } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { Sidebar } from "./components/layout/Sidebar";
 import { AssistantPanel } from "./components/assistant/AssistantPanel";
 import { HomeView } from "./views/HomeView";
 import { AskView } from "./views/AskView";
-import { ExploreView } from "./views/ExploreView";
-import { AgentsView } from "./views/AgentsView";
-import { ReviewView } from "./views/ReviewView";
+import { SkeletonStack } from "./components/ui/Skeleton";
 import { apiBase } from "./api/client";
+
+// Heavier secondary views are deferred so the initial bundle stays light.
+const ExploreView = lazy(() =>
+  import("./views/ExploreView").then((m) => ({ default: m.ExploreView })),
+);
+const AgentsView = lazy(() =>
+  import("./views/AgentsView").then((m) => ({ default: m.AgentsView })),
+);
+const ReviewView = lazy(() =>
+  import("./views/ReviewView").then((m) => ({ default: m.ReviewView })),
+);
+
+function ViewFallback() {
+  return (
+    <div className="lazy-fallback">
+      <SkeletonStack rows={4} variant="card" />
+    </div>
+  );
+}
 
 function MainContent() {
   const { view } = useApp();
@@ -15,9 +33,21 @@ function MainContent() {
     <main className="main" id="main">
       {view === "home" && <HomeView />}
       {view === "ask" && <AskView />}
-      {view === "explore" && <ExploreView />}
-      {view === "agents" && <AgentsView />}
-      {view === "review" && <ReviewView />}
+      {view === "explore" && (
+        <Suspense fallback={<ViewFallback />}>
+          <ExploreView />
+        </Suspense>
+      )}
+      {view === "agents" && (
+        <Suspense fallback={<ViewFallback />}>
+          <AgentsView />
+        </Suspense>
+      )}
+      {view === "review" && (
+        <Suspense fallback={<ViewFallback />}>
+          <ReviewView />
+        </Suspense>
+      )}
     </main>
   );
 }

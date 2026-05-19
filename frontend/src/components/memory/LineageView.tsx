@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { fetchCausalChain } from "../../api/client";
 import type { DecisionResult } from "../../types";
 import { formatRelativeTime } from "../../lib/format";
+import { Skeleton } from "../ui/Skeleton";
+import { StateView } from "../ui/StateView";
 
 type Props = {
   decisionId: string;
@@ -32,9 +34,29 @@ export function LineageView({ decisionId, workspaceId }: Props) {
     };
   }, [decisionId, workspaceId]);
 
-  if (loading) return <p className="loading-text">Tracing decision lineage…</p>;
-  if (error) return <p className="alert alert--error">{error}</p>;
-  if (nodes.length === 0) return <p className="muted">No lineage found for this decision.</p>;
+  if (loading) {
+    return (
+      <div aria-live="polite">
+        <Skeleton variant="row" />
+        <Skeleton variant="row" />
+        <Skeleton variant="row" />
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <StateView tone="error" icon="!" title="Couldn't trace lineage">
+        {error}
+      </StateView>
+    );
+  }
+  if (nodes.length === 0) {
+    return (
+      <StateView icon="◇" title="No lineage yet">
+        This decision hasn't superseded or been triggered by anything else in the graph yet.
+      </StateView>
+    );
+  }
 
   return (
     <ol className="lineage">

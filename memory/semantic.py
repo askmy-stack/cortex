@@ -56,7 +56,7 @@ def upsert_decision_vector(decision: DecisionEvent) -> None:
     if client is None:
         return
     try:
-        from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
+        from qdrant_client.models import Distance, PointStruct, VectorParams
     except ImportError:
         return
 

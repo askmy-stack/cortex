@@ -22,6 +22,7 @@ import structlog
 from fastapi import FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
 from api.contradictions import router as contradictions_router
 from api.decisions import router as decisions_router
 from api.deps import caller_roles, memory, set_memory_service
@@ -91,33 +92,22 @@ app.include_router(remember_router)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _check_neo4j() -> str:
-    """Ping Neo4j and return 'ok' or 'unreachable'."""
+async def _check_neo4j() -> str:
+    """Ping Neo4j via the shared async driver."""
     try:
-        from neo4j import GraphDatabase
-        uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-        user = os.environ.get("NEO4J_USER", "neo4j")
-        password = os.environ.get("NEO4J_PASSWORD", "cortex_local")
-        driver = GraphDatabase.driver(uri, auth=(user, password))
-        driver.verify_connectivity()
-        driver.close()
-        return "ok"
+        return await memory().neo4j_health()
+    except HTTPException:
+        return "unreachable"
     except Exception:
         return "unreachable"
 
 
 def _check_redis() -> str:
-    """Ping Redis and return 'ok' or 'unreachable'."""
+    """Ping Redis via the shared cached client."""
     try:
-        import redis
-        r = redis.Redis(
-            host=os.environ.get("REDIS_HOST", "localhost"),
-            port=int(os.environ.get("REDIS_PORT", "6379")),
-            password=os.environ.get("REDIS_PASSWORD"),
-            socket_connect_timeout=1,
-        )
-        r.ping()
-        return "ok"
+        return memory().redis_health()
+    except HTTPException:
+        return "unreachable"
     except Exception:
         return "unreachable"
 
@@ -139,7 +129,7 @@ async def health() -> HealthResponse:
     Always returns HTTP 200 — callers should inspect `dependencies` field.
     Used by Docker healthcheck and Kubernetes liveness probes.
     """
-    neo4j_status = _check_neo4j()
+    neo4j_status = await _check_neo4j()
     redis_status = _check_redis()
 
     log.info(

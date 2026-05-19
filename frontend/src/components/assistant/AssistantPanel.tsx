@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useApp } from "../../context/AppContext";
+import { TypingIndicator } from "../ui/TypingIndicator";
 
 function renderMarkdownLite(text: string): ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -14,14 +15,73 @@ function renderMarkdownLite(text: string): ReactNode {
   });
 }
 
+function formatTimestamp(ms: number): string {
+  try {
+    return new Date(ms).toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
 export function AssistantPanel() {
   const { assistantOpen, setAssistantOpen, messages, pushMessage, setView } = useApp();
   const [draft, setDraft] = useState("");
+  const [thinking, setThinking] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const thinkingTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, thinking]);
+
+  useEffect(() => {
+    return () => {
+      if (thinkingTimer.current !== undefined) window.clearTimeout(thinkingTimer.current);
+    };
+  }, []);
+
+  const handleAsk = useCallback(() => {
+    const q = draft.trim();
+    if (!q) return;
+    pushMessage("user", q);
+    setDraft("");
+    setThinking(true);
+    const lower = q.toLowerCase();
+
+    if (thinkingTimer.current !== undefined) window.clearTimeout(thinkingTimer.current);
+    // A short delay surfaces the typing affordance — the canned replies are
+    // instant, so without it the indicator would flicker imperceptibly.
+    thinkingTimer.current = window.setTimeout(() => {
+      if (lower.includes("what is cortex") || lower.includes("what does cortex")) {
+        pushMessage(
+          "assistant",
+          "Cortex is your **organizational memory** — it captures *decisions* (not documents) from Slack, GitHub, Jira, and more, then makes them searchable for humans and AI agents. Go to **Ask** to query your institutional knowledge.",
+        );
+      } else if (lower.includes("search") || lower.includes("ask")) {
+        pushMessage(
+          "assistant",
+          "Opening **Ask** — type a question like *Why CockroachDB for payments?* and I'll summarize what we find.",
+        );
+        setView("ask");
+      } else if (lower.includes("graph") || lower.includes("map")) {
+        pushMessage(
+          "assistant",
+          "Open **Memory map** to see relationships between people, systems, and decisions.",
+        );
+        setView("explore");
+      } else {
+        pushMessage(
+          "assistant",
+          "Try asking on the **Ask** page, or pick an example question. I can explain results in plain language after you search.",
+        );
+        setView("ask");
+      }
+      setThinking(false);
+    }, 260);
+  }, [draft, pushMessage, setView]);
 
   if (!assistantOpen) {
     return (
@@ -34,32 +94,6 @@ export function AssistantPanel() {
         <span aria-hidden>✦</span> Guide
       </button>
     );
-  }
-
-  function handleAsk() {
-    const q = draft.trim();
-    if (!q) return;
-    pushMessage("user", q);
-    setDraft("");
-    const lower = q.toLowerCase();
-    if (lower.includes("what is cortex") || lower.includes("what does cortex")) {
-      pushMessage(
-        "assistant",
-        "Cortex is your **organizational memory** — it captures *decisions* (not documents) from Slack, GitHub, Jira, and more, then makes them searchable for humans and AI agents. Go to **Ask** to query your institutional knowledge.",
-      );
-    } else if (lower.includes("search") || lower.includes("ask")) {
-      pushMessage("assistant", "Opening **Ask** — type a question like *Why CockroachDB for payments?* and I'll summarize what we find.");
-      setView("ask");
-    } else if (lower.includes("graph") || lower.includes("map")) {
-      pushMessage("assistant", "Open **Memory map** to see relationships between people, systems, and decisions.");
-      setView("explore");
-    } else {
-      pushMessage(
-        "assistant",
-        "Try asking on the **Ask** page, or pick an example question. I can explain results in plain language after you search.",
-      );
-      setView("ask");
-    }
   }
 
   return (
@@ -83,10 +117,16 @@ export function AssistantPanel() {
           <article
             key={m.id}
             className={`assistant-msg assistant-msg--${m.role}`}
+            title={formatTimestamp(m.timestamp)}
           >
             {renderMarkdownLite(m.content)}
           </article>
         ))}
+        {thinking ? (
+          <article className="assistant-msg assistant-msg--assistant" aria-hidden>
+            <TypingIndicator />
+          </article>
+        ) : null}
         <div ref={endRef} />
       </div>
       <footer className="assistant-panel__foot">
@@ -99,7 +139,12 @@ export function AssistantPanel() {
           onKeyDown={(e) => e.key === "Enter" && handleAsk()}
           aria-label="Message to Cortex guide"
         />
-        <button type="button" className="btn btn--primary" onClick={handleAsk}>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={handleAsk}
+          disabled={!draft.trim()}
+        >
           Send
         </button>
       </footer>

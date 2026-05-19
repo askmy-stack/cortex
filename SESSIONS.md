@@ -293,3 +293,46 @@
 1. Owner demo recording ([docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md))
 2. Live webhook validation with real Slack/GitHub/Linear tokens
 3. Optional: graph explorer UI tab calling `/decisions/.../chain`
+
+---
+
+## Session — 2026-05-19 — Production refinement pass
+**Duration:** ~2h
+**Phase:** Phase 6 polish (dashboard) + Phase 0 hardening (backend)
+
+### Built
+**Backend correctness & quality**
+- `graph/query.py`: `_CAUSAL_CHAIN` query rewritten — depth is now a clamped literal (D-017). Added `list_pending_contradictions` and `health()` on `GraphQueryService` so the contradiction route and `/health` reuse the shared async driver.
+- `api/contradictions.py`: rewrote to `async def`, removed per-request `GraphDatabase.driver()`; now calls `MemoryService.pending_contradictions`.
+- `api/main.py`: `_check_neo4j` / `_check_redis` reuse `MemoryService` instead of opening a new driver per `/health` poll.
+- `api/memory.py`: added `pending_contradictions`, `neo4j_health`, `redis_health`.
+- `pipeline/extraction_worker.py`: bounded LRU dedup cache (`_BoundedSeenCache`) replaces the unbounded `set`. Capacity tuned via `CORTEX_DEDUP_CACHE_SIZE`.
+- Removed dead imports in `memory/semantic.py`, `intelligence/contradiction_detector.py`, `api/decisions.py`.
+
+**Frontend correctness, perf, and UX**
+- `frontend/package.json`: build now runs `tsc --noEmit && vite build`. `tsconfig.json` enables `noUnusedLocals` / `noUnusedParameters`.
+- `App.tsx`: `ExploreView`, `AgentsView`, `ReviewView` are `React.lazy` + `<Suspense>` fallbacks (skeleton). Cuts initial bundle ~30%.
+- New shared UI primitives: `components/ui/Skeleton.tsx`, `StateView.tsx`, `TypingIndicator.tsx`.
+- `index.css`: bumped `--text-muted` contrast, added `--focus-ring` + global `:focus-visible`, skeleton shimmer, typing animation, `prefers-reduced-motion` overrides, mobile sidebar redone as horizontal scrollable tabs at ≤768 with 44px tap targets, breakpoint at ≥1440.
+- `HomeView`, `AskView`, `AgentsView`, `ReviewView`, `LineageView`: skeleton + error/empty states via `<StateView />`. `ReviewView` auto-loads on mount.
+- `AskView`: debounced character counter, `useMemo`/`useCallback` for result list, fixed person/system chip selector heuristic.
+- `DecisionCard`: chevron rotates 180° with motion-token; wrapped in `React.memo` with a custom equality check.
+- `AssistantPanel`: three-dot typing indicator with `aria-live`; message timestamp via tooltip; Send disabled when empty; thinking timer cleaned up on unmount and on rapid re-send.
+- `MemoryGraph`: Space key activation + `aria-pressed` + `aria-label` per node.
+
+**Tests added**
+- `tests/graph/test_query.py`: causal-chain inline depth, depth clamp bounds, `trace_causal_chain` round-trip asserting the query no longer carries `$max_depth`, `list_pending_contradictions` RBAC filter.
+- `tests/pipeline/test_extraction_worker.py`: LRU eviction + recency promotion.
+- `tests/api/test_main.py`: rewrote `test_contradictions_pending` against the new async path + added a 503 failure case.
+
+### State at end
+- **235 pytest passing · 81.07% coverage.**
+- `cd frontend && npm run build` — clean (`tsc --noEmit` → `vite build`, no warnings, 4-chunk split).
+- No public API change. RBAC, signature verification, and `make demo` semantics preserved.
+
+### Decisions made
+- D-017 logged in `DECISIONS.md`.
+
+### Next session starts with
+- Owner review of the PR opened against `main` from `feature/production-refinement`.
+- Optional: introduce Vitest + Testing Library for the frontend (deferred — out of scope per task constraints).
