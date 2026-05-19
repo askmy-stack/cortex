@@ -68,8 +68,13 @@ export function MemoryGraph({ decisions, focusId, onFocus }: Props) {
             style={{ cursor: onFocus ? "pointer" : "default" }}
             role="button"
             tabIndex={0}
+            aria-label={`${n.kind}: ${n.label}`}
+            aria-pressed={focusId === n.id}
             onKeyDown={(ev) => {
-              if (ev.key === "Enter") onFocus?.(n.id);
+              if (ev.key === "Enter" || ev.key === " ") {
+                ev.preventDefault();
+                onFocus?.(n.id);
+              }
             }}
           >
             <circle r={n.kind === "decision" ? 28 : 18} className="memory-graph__circle" />

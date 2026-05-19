@@ -1,6 +1,7 @@
 import type {
   CausalChainResponse,
   ContradictionItem,
+  DecisionResult,
   Health,
   InjectResponse,
   QueryResponse,
@@ -13,9 +14,17 @@ export const apiBase =
     .trim()
     .replace(/\/$/, "") || DEFAULT_API_BASE;
 
+/** Surface upstream HTTP status + a trimmed body so the UI can show useful errors. */
 async function parseError(response: Response): Promise<string> {
-  const detail = await response.text();
-  return `Request failed (${response.status}): ${detail.slice(0, 200)}`;
+  let detail = "";
+  try {
+    detail = await response.text();
+  } catch {
+    detail = "";
+  }
+  const status = `${response.status} ${response.statusText || ""}`.trim();
+  if (!detail) return `Request failed (${status})`;
+  return `Request failed (${status}): ${detail.slice(0, 200)}`;
 }
 
 export async function fetchHealth(): Promise<Health> {
@@ -88,11 +97,13 @@ export async function fetchBySystem(
   systemId: string,
   workspaceId: string,
   limit = 10,
-): Promise<import("../types").DecisionResult[]> {
+): Promise<DecisionResult[]> {
   const params = new URLSearchParams({ workspace_id: workspaceId, limit: String(limit) });
-  const response = await fetch(`${apiBase}/decisions/by-system/${encodeURIComponent(systemId)}?${params}`);
+  const response = await fetch(
+    `${apiBase}/decisions/by-system/${encodeURIComponent(systemId)}?${params}`,
+  );
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
-  return response.json() as Promise<import("../types").DecisionResult[]>;
+  return response.json() as Promise<DecisionResult[]>;
 }

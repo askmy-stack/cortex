@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import signal
+from collections import OrderedDict
 from typing import Any
 
 import structlog
@@ -31,6 +32,38 @@ RAW_TOPICS = [
 ]
 EXTRACTED_TOPIC = "cortex.extracted.decisions"
 CONSUMER_GROUP = "cortex-extraction-worker"
+
+# Bounded de-duplication cache for in-flight raw events. The pipeline worker
+# is single-process and re-deliveries from Kafka are rare, but at-least-once
+# delivery + occasional restarts mean we still need replay protection. An
+# unbounded `set` would leak memory over weeks of uptime; an LRU eviction with
+# a generous cap (~250k events ≈ days of throughput) is the right trade.
+PROCESSED_CACHE_SIZE = int(os.environ.get("CORTEX_DEDUP_CACHE_SIZE", "262144"))
+
+
+class _BoundedSeenCache:
+    """Insertion-ordered LRU keyed on event id."""
+
+    def __init__(self, capacity: int) -> None:
+        self._capacity = max(1, capacity)
+        self._items: OrderedDict[str, None] = OrderedDict()
+
+    def __contains__(self, key: str) -> bool:
+        if key in self._items:
+            self._items.move_to_end(key)
+            return True
+        return False
+
+    def add(self, key: str) -> None:
+        if key in self._items:
+            self._items.move_to_end(key)
+            return
+        self._items[key] = None
+        if len(self._items) > self._capacity:
+            self._items.popitem(last=False)
+
+    def __len__(self) -> int:
+        return len(self._items)
 
 
 def _delivery_callback(err: Any, msg: Any) -> None:
@@ -78,7 +111,7 @@ class ExtractionWorker:
         self._trust = TrustScorer()
         self._writer = GraphWriter()
         self._contradictions: ContradictionDetector | None = None
-        self._processed: set[str] = set()
+        self._processed = _BoundedSeenCache(PROCESSED_CACHE_SIZE)
         self._running = True
         log.info("pipeline.worker.initialized", topics=RAW_TOPICS, group_id=group_id)
 

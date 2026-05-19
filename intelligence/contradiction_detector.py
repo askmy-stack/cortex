@@ -11,7 +11,6 @@ import os
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Any
 
 import structlog
 from confluent_kafka import KafkaException, Producer

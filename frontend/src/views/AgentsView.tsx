@@ -4,6 +4,8 @@ import { useApp } from "../context/AppContext";
 import { injectSummary } from "../lib/assistant";
 import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
+import { Skeleton } from "../components/ui/Skeleton";
+import { StateView } from "../components/ui/StateView";
 
 export function AgentsView() {
   const { workspaceId, pushMessage } = useApp();
@@ -93,20 +95,44 @@ export function AgentsView() {
         </button>
       </section>
 
-      {error ? <p className="alert alert--error">{error}</p> : null}
+      {error ? (
+        <StateView tone="error" icon="!" title="Injection failed">
+          {error}
+        </StateView>
+      ) : null}
+
+      {loading && !result ? (
+        <section className="panel" aria-live="polite">
+          <h2>
+            <Skeleton variant="title" />
+          </h2>
+          <Skeleton variant="row" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </section>
+      ) : null}
 
       {result ? (
-        <section className="panel fade-in">
+        <section className="panel fade-in" aria-live="polite">
           <h2>What the agent would see</h2>
-          <blockquote className="inject-summary">{result.context_summary}</blockquote>
-          <p className="muted">
-            ~{result.token_estimate} tokens · {result.latency_ms}ms
-          </p>
-          <div className="decision-list">
-            {result.injected_decisions.map((d, i) => (
-              <DecisionCard key={d.event_id} decision={d} defaultOpen={i === 0} />
-            ))}
-          </div>
+          {result.injected_decisions.length === 0 ? (
+            <StateView icon="◇" title="No matching memory">
+              Cortex didn't find decisions that match this context yet — try a more specific
+              prompt or seed more memories.
+            </StateView>
+          ) : (
+            <>
+              <blockquote className="inject-summary">{result.context_summary}</blockquote>
+              <p className="muted">
+                ~{result.token_estimate} tokens · {result.latency_ms}ms
+              </p>
+              <div className="decision-list">
+                {result.injected_decisions.map((d, i) => (
+                  <DecisionCard key={d.event_id} decision={d} defaultOpen={i === 0} />
+                ))}
+              </div>
+            </>
+          )}
         </section>
       ) : null}
     </article>

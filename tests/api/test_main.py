@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -11,10 +11,10 @@ from api.main import app
 
 def test_health_endpoint() -> None:
     client = TestClient(app)
-    with patch("api.main._check_neo4j", return_value="ok"), patch(
-        "api.main._check_redis",
-        return_value="ok",
-    ):
+    with patch(
+        "api.main._check_neo4j",
+        new=AsyncMock(return_value="ok"),
+    ), patch("api.main._check_redis", return_value="ok"):
         response = client.get("/health")
     assert response.status_code == 200
     payload = response.json()
@@ -58,35 +58,45 @@ def test_query_endpoint_uses_memory_service() -> None:
     assert payload["results"][0]["made_by"] == ["alice@company.com"]
 
 
-@patch("api.contradictions.GraphDatabase.driver")
-def test_contradictions_pending(mock_driver: MagicMock) -> None:
-    session = MagicMock()
-
-    class Rec:
-        def get(self, key: str, default: object = None) -> object:
-            data = {
-                "id": "c1",
-                "score": 0.6,
-                "explanation": "overlap",
-                "access_policy": '{"roles": ["authenticated"], "deny": [], "classification": "internal", "gdpr_subject": false}',
-                "new_id": "d-new",
-                "prior_id": "d-old",
-                "status": "pending",
-            }
-            return data.get(key, default)
-
-        def __getitem__(self, key: str) -> object:
-            return self.get(key)
-
-    session.run.return_value = [Rec()]
-    cm = MagicMock()
-    cm.__enter__.return_value = session
-    cm.__exit__.return_value = False
-    mock_driver.return_value.session.return_value = cm
-
+def test_contradictions_pending() -> None:
+    """Endpoint should return RBAC-filtered rows from the shared memory service."""
     client = TestClient(app)
-    response = client.get("/contradictions/pending", params={"workspace_id": "ws-1"})
+    with patch(
+        "api.contradictions.memory",
+        return_value=AsyncMock(
+            pending_contradictions=AsyncMock(
+                return_value=[
+                    {
+                        "id": "c1",
+                        "score": 0.6,
+                        "explanation": "overlap",
+                        "new_decision_id": "d-new",
+                        "prior_decision_id": "d-old",
+                        "status": "pending",
+                    }
+                ]
+            )
+        ),
+    ):
+        response = client.get(
+            "/contradictions/pending",
+            params={"workspace_id": "ws-1"},
+        )
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
     assert data[0]["id"] == "c1"
+    assert data[0]["new_decision_id"] == "d-new"
+
+
+def test_contradictions_pending_handles_graph_failure() -> None:
+    """503 surfaces when the graph driver raises."""
+    client = TestClient(app)
+    failing = AsyncMock()
+    failing.pending_contradictions.side_effect = RuntimeError("neo4j down")
+    with patch("api.contradictions.memory", return_value=failing):
+        response = client.get(
+            "/contradictions/pending",
+            params={"workspace_id": "ws-1"},
+        )
+    assert response.status_code == 503

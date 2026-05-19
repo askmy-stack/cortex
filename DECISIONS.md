@@ -241,6 +241,20 @@ access_policy: {
 
 ---
 
+### D-017 — 2026-05-19 — Causal-chain Cypher inlines depth; frontend build gates on `tsc`
+**Status:** Active
+**Decision:**
+1. The Neo4j 5 driver rejects parameterised variable-length depth (`[:SUPERSEDES*1..$max_depth]`). `graph/query._causal_chain_query` now renders the depth as a clamped literal (`1..8`) into a templated Cypher string before execution. Parameters that are *values* (`$decision_id`, `$workspace_id`) remain bound.
+2. `frontend/package.json` runs `tsc --noEmit && vite build` so TypeScript errors fail the build (`vite build` alone strips types and silently ships type bugs). `tsconfig.json` also enables `noUnusedLocals` / `noUnusedParameters` so dead code surfaces during the type-check.
+**Rationale:** (1) The previous Cypher would raise at runtime for every `/decisions/{id}/chain` call against a real Neo4j; the integer is clamped to a safe range before substitution, so the literal injection is benign. (2) The Vite-only build path hid an entire class of regressions — surfacing them at build time costs ~150ms and protects the dashboard contract.
+**Alternatives rejected:**
+- APOC `apoc.path.subgraphAll` (drags in an extra plugin for a problem that is already bounded).
+- Parameterised list of depths with `WHERE length(path) <= $max_depth` (much higher graph traversal cost).
+- Switching the frontend to ESBuild for type checking (drops generics support).
+**Owner:** Abhinaysai
+
+---
+
 ## PENDING DECISIONS (need resolution before build)
 
 | # | Decision needed | Options | Deadline | Status |

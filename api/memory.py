@@ -189,5 +189,31 @@ class MemoryService:
             caller_roles=caller_roles,
         )
 
+    async def pending_contradictions(
+        self,
+        *,
+        workspace_id: str,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """RBAC-filtered queue of contradictions awaiting human review."""
+        return await self._graph.list_pending_contradictions(
+            workspace_id=workspace_id,
+            caller_roles=caller_roles,
+        )
+
+    async def neo4j_health(self) -> str:
+        """Return ``'ok'`` when the shared async driver is reachable."""
+        return "ok" if await self._graph.health() else "unreachable"
+
+    def redis_health(self) -> str:
+        """Return ``'ok'`` when the cached Redis client responds to PING."""
+        if self._redis is None:
+            return "unreachable"
+        try:
+            self._redis.ping()
+            return "ok"
+        except Exception:
+            return "unreachable"
+
     async def close(self) -> None:
         await self._graph.close()

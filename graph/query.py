@@ -8,7 +8,7 @@ from typing import Any
 import structlog
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from graph.rbac import can_access
+from graph.rbac import can_access, normalize_access_policy
 
 log = structlog.get_logger(__name__)
 
@@ -63,13 +63,16 @@ ORDER BY d.extracted_at DESC
 LIMIT $limit
 """
 
-_CAUSAL_CHAIN = """
-MATCH (root:Decision {id: $decision_id, workspace_id: $workspace_id})
-OPTIONAL MATCH (root)-[:SUPERSEDES*1..$max_depth]->(prior:Decision)
-WHERE prior.workspace_id = $workspace_id
-OPTIONAL MATCH (successor:Decision)-[:SUPERSEDES*1..$max_depth]->(root)
-WHERE successor.workspace_id = $workspace_id
-OPTIONAL MATCH (trigger:Decision {id: root.triggered_by, workspace_id: $workspace_id})
+# Variable-length depth must be a literal in Cypher (Neo4j 5 does not allow a
+# parameter inside `*1..N`). `_causal_chain_query` substitutes a validated
+# integer into the template below before execution.
+_CAUSAL_CHAIN_TEMPLATE = """
+MATCH (root:Decision {{id: $decision_id, workspace_id: $workspace_id}})
+OPTIONAL MATCH (root)-[:SUPERSEDES*1..{depth}]->(prior:Decision)
+  WHERE prior.workspace_id = $workspace_id
+OPTIONAL MATCH (successor:Decision)-[:SUPERSEDES*1..{depth}]->(root)
+  WHERE successor.workspace_id = $workspace_id
+OPTIONAL MATCH (trigger:Decision {{id: root.triggered_by, workspace_id: $workspace_id}})
 WITH collect(DISTINCT root) + collect(DISTINCT prior) + collect(DISTINCT successor)
      + CASE WHEN trigger IS NULL THEN [] ELSE [trigger] END AS all_nodes
 UNWIND all_nodes AS d
@@ -88,6 +91,16 @@ RETURN d,
 ORDER BY d.extracted_at ASC
 """
 
+
+def _causal_chain_query(depth: int) -> str:
+    """Render the causal-chain query with a validated literal depth.
+
+    Depth is clamped to ``1..8`` before substitution to keep the Cypher path
+    bounded and to defuse any injection risk from the integer formatting.
+    """
+    bounded = max(1, min(int(depth), 8))
+    return _CAUSAL_CHAIN_TEMPLATE.format(depth=bounded)
+
 _CONFLICT_CANDIDATES = """
 MATCH (d:Decision {id: $decision_id, workspace_id: $workspace_id})-[:AFFECTS]->(s:System)
 MATCH (other:Decision)-[:AFFECTS]->(s)
@@ -102,6 +115,20 @@ RETURN other AS d,
        collect(DISTINCT sys.id) AS affects,
        collect(DISTINCT r.content) AS rationale
 LIMIT $limit
+"""
+
+_PENDING_CONTRADICTIONS = """
+MATCH (c:Contradiction {workspace_id: $workspace_id, status: 'pending'})
+OPTIONAL MATCH (c)-[:INVOLVES_NEW]->(n:Decision)
+OPTIONAL MATCH (c)-[:INVOLVES_PRIOR]->(p:Decision)
+RETURN c.id AS id,
+       c.score AS score,
+       c.explanation AS explanation,
+       c.access_policy AS access_policy,
+       n.id AS new_id,
+       p.id AS prior_id,
+       c.status AS status
+ORDER BY c.score DESC
 """
 
 
@@ -244,10 +271,9 @@ class GraphQueryService:
         nodes: list[dict[str, Any]] = []
         async with driver.session() as session:
             result = await session.run(
-                _CAUSAL_CHAIN,
+                _causal_chain_query(depth),
                 decision_id=decision_id,
                 workspace_id=workspace_id,
-                max_depth=depth,
             )
             async for record in result:
                 decision = record["d"]
@@ -271,6 +297,45 @@ class GraphQueryService:
             node_count=len(nodes),
         )
         return nodes
+
+    async def list_pending_contradictions(
+        self,
+        *,
+        workspace_id: str,
+        caller_roles: list[str],
+    ) -> list[dict[str, Any]]:
+        """Return pending contradictions, RBAC-filtered."""
+        driver = await self._driver_instance()
+        rows: list[dict[str, Any]] = []
+        async with driver.session() as session:
+            result = await session.run(
+                _PENDING_CONTRADICTIONS,
+                workspace_id=workspace_id,
+            )
+            async for record in result:
+                policy = normalize_access_policy(record.get("access_policy"))
+                if not can_access(policy, caller_roles):
+                    continue
+                rows.append(
+                    {
+                        "id": str(record["id"]),
+                        "score": float(record["score"] or 0.0),
+                        "explanation": str(record["explanation"] or ""),
+                        "new_decision_id": record.get("new_id"),
+                        "prior_decision_id": record.get("prior_id"),
+                        "status": str(record.get("status") or "pending"),
+                    }
+                )
+        return rows
+
+    async def health(self) -> bool:
+        """Lightweight liveness probe — verifies driver connectivity."""
+        try:
+            driver = await self._driver_instance()
+            await driver.verify_connectivity()
+            return True
+        except Exception:
+            return False
 
     async def find_conflict_candidates(
         self,
