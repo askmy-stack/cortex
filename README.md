@@ -340,13 +340,6 @@ Built on:
 
 ---
 
-## Author
-
-**Abhinaysai Kamineni** — MS Data Science, George Washington University
-[GitHub](https://github.com/askmy-stack) · [LinkedIn](https://linkedin.com/in/abhinaysai-kamineni)
-
----
-
 ## License
 
 Apache 2.0 — use it, fork it, build on it.
