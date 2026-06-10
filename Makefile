@@ -1,4 +1,4 @@
-.PHONY: demo demo-dry-run test ci stack init-kafka pipeline-restart pipeline-local verify-pipeline verify-github verify-jira verify-connectors
+.PHONY: demo demo-dry-run test ci stack init-kafka pipeline-restart pipeline-local verify-pipeline verify-github verify-jira verify-linear verify-connectors
 
 # Local portfolio demo: Docker infra + migrations + seed + API + worker + frontend.
 demo:
@@ -41,4 +41,7 @@ verify-github:
 verify-jira:
 	python scripts/verify_slack_pipeline.py --source jira --timeout 120
 
-verify-connectors: verify-pipeline verify-github verify-jira
+verify-linear:
+	python scripts/verify_slack_pipeline.py --source linear --timeout 120
+
+verify-connectors: verify-pipeline verify-github verify-jira verify-linear

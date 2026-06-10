@@ -273,3 +273,17 @@ class TestWriteSuccess:
         decision = _make_decision(importance_score=IMPORTANCE_DISCARD)
         result = writer.write(decision)
         assert result == decision.event_id
+
+    def test_temporal_edges_include_invalid_at_on_rationale(self) -> None:
+        writer, mock_tx = self._make_writer_with_mock_session()
+        writer.write(_make_decision(rationale=["Because scale"]))
+        cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
+        rationale_link = next(c for c in cypher_calls if "HAS_RATIONALE" in c)
+        assert "rel.invalid_at = null" in rationale_link
+
+    def test_temporal_edges_include_invalid_at_on_supersedes(self) -> None:
+        writer, mock_tx = self._make_writer_with_mock_session()
+        writer.write(_make_decision(replaces="prev-decision-id-001"))
+        cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
+        supersedes_link = next(c for c in cypher_calls if "SUPERSEDES" in c)
+        assert "r.invalid_at = null" in supersedes_link

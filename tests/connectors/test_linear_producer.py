@@ -43,3 +43,25 @@ def test_normalise_issue_create() -> None:
 
 def test_normalise_skips_unknown_type() -> None:
     assert normalise_linear_event({"type": "Project"}, "ws-1") is None
+
+
+def test_normalise_comment_create() -> None:
+    payload = {
+        "type": "Comment",
+        "action": "create",
+        "data": {
+            "id": "cmt-1",
+            "body": "We decided to use OTel for tracing.",
+            "createdAt": "2026-05-11T12:00:00Z",
+            "user": {"email": "bob@co.com"},
+            "issue": {
+                "id": "issue-1",
+                "identifier": "ENG-9",
+                "team": {"key": "ENG"},
+            },
+        },
+    }
+    raw = normalise_linear_event(payload, "ws-1")
+    assert raw is not None
+    assert raw.event_type == "linear:comment:create"
+    assert "OTel" in raw.content

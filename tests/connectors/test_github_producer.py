@@ -317,6 +317,80 @@ class TestNormaliseIssue:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# PR comments
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _issue_comment_payload(
+    *,
+    action: str = "created",
+    body: str = "LGTM — we decided to ship with feature flags.",
+    on_pr: bool = True,
+) -> dict:
+    issue: dict = {
+        "number": 42,
+        "title": "Migrate payments",
+        "user": {"login": "priya"},
+    }
+    if on_pr:
+        issue["pull_request"] = {"url": "https://api.github.com/repos/acme/payments/pulls/42"}
+    return {
+        "action": action,
+        "comment": {
+            "id": 9001,
+            "body": body,
+            "user": {"login": "reviewer"},
+            "created_at": "2026-06-10T18:00:00Z",
+            "updated_at": "2026-06-10T18:00:00Z",
+        },
+        "issue": issue,
+        "repository": {"full_name": "acme/payments"},
+    }
+
+
+def _pr_review_comment_payload(body: str = "Use CockroachDB here for multi-region.") -> dict:
+    return {
+        "action": "created",
+        "comment": {
+            "id": 8001,
+            "body": body,
+            "path": "payments/migrate.go",
+            "user": {"login": "dan"},
+            "created_at": "2026-06-10T18:00:00Z",
+        },
+        "pull_request": {"number": 42, "title": "Migrate payments"},
+        "repository": {"full_name": "acme/payments"},
+    }
+
+
+class TestIssueCommentEvents:
+    def test_pr_issue_comment_created(self) -> None:
+        result = normalise_github_event(
+            _issue_comment_payload(), "issue_comment", WORKSPACE_ID
+        )
+        assert result is not None
+        assert result.event_type == "github:issue_comment:created"
+        assert "LGTM" in result.content
+        assert result.source_id == "acme/payments:pr_comment:9001"
+
+    def test_non_pr_issue_comment_skipped(self) -> None:
+        result = normalise_github_event(
+            _issue_comment_payload(on_pr=False), "issue_comment", WORKSPACE_ID
+        )
+        assert result is None
+
+
+class TestPullRequestReviewCommentEvents:
+    def test_inline_review_comment_created(self) -> None:
+        result = normalise_github_event(
+            _pr_review_comment_payload(), "pull_request_review_comment", WORKSPACE_ID
+        )
+        assert result is not None
+        assert result.event_type == "github:pull_request_review_comment:created"
+        assert "CockroachDB" in result.content
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Unhandled event types
 # ─────────────────────────────────────────────────────────────────────────────
 

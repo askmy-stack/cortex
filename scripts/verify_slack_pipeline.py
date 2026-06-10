@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify connector → Kafka → extract → Neo4j pipeline end-to-end.
 
-Supports slack, github, and jira sources. Default source is slack for backward
+Supports slack, github, jira, and linear sources. Default source is slack for backward
 compatibility with ``make verify-pipeline``.
 
 Prerequisites:
@@ -13,6 +13,7 @@ Usage:
   python scripts/verify_slack_pipeline.py --source slack
   python scripts/verify_slack_pipeline.py --source github
   python scripts/verify_slack_pipeline.py --source jira --dry-run
+  python scripts/verify_slack_pipeline.py --source linear
 """
 
 from __future__ import annotations
@@ -59,6 +60,13 @@ def _jira_comment(marker: str, _workspace: str) -> str:
     )
 
 
+def _linear_comment(marker: str, _workspace: str) -> str:
+    return (
+        f"We decided to adopt event sourcing for billing ({marker}) "
+        "because audit requirements blocked the monolith release."
+    )
+
+
 SOURCE_CONFIG: dict[str, dict[str, object]] = {
     "slack": {
         "script": "inject_slack_message.py",
@@ -77,6 +85,12 @@ SOURCE_CONFIG: dict[str, dict[str, object]] = {
         "label": "Jira comment",
         "text_builder": _jira_comment,
         "extra_args": lambda text, workspace: ["--comment", text, "--workspace", workspace],
+    },
+    "linear": {
+        "script": "inject_linear_event.py",
+        "label": "Linear comment",
+        "text_builder": _linear_comment,
+        "extra_args": lambda text, workspace: ["--body", text, "--workspace", workspace],
     },
 }
 

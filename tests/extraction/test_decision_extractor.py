@@ -405,6 +405,55 @@ class TestContentHash:
         assert all(c in "0123456789abcdef" for c in h)
 
 
+GITHUB_PR_SAMPLES = [
+    (
+        "We decided to migrate payments to CockroachDB for multi-region scale. "
+        "Postgres failover gaps blocked EU launch."
+    ),
+    (
+        "Team agreed: adopt Kafka as the single event bus. No point-to-point HTTP "
+        "between pipeline services."
+    ),
+    (
+        "Approved: deprecate the monolith billing module in Q3. Event sourcing "
+        "is the replacement architecture."
+    ),
+    (
+        "Decision: use Neo4j as source of truth for relationships. Application code "
+        "must not encode relationship logic."
+    ),
+    (
+        "We will ship feature flags for the payments rewrite before full cutover."
+    ),
+]
+
+
+class TestGitHubPrExtractionSamples:
+    """GitHub PR bodies — Phase 2 extraction reliability benchmark."""
+
+    @pytest.fixture(autouse=True)
+    def clear_cache(self) -> None:
+        _extraction_cache.clear()
+
+    @patch.object(DecisionExtractor, "_call_backend")
+    @pytest.mark.parametrize("body", GITHUB_PR_SAMPLES)
+    def test_github_pr_bodies_extract_with_high_confidence(
+        self,
+        mock_call: MagicMock,
+        body: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("EXTRACTION_BACKEND", "ollama")
+        mock_call.return_value = _mock_extracted(confidence=0.88, content=body)
+        raw = _make_raw_event(body, source="github")
+        raw.event_type = "github:pull_request:merged"
+        extractor = DecisionExtractor()
+        result = extractor.extract(raw)
+        assert result is not None
+        assert result.extraction_confidence >= CONFIDENCE_DISCARD
+        assert result.provenance.source == "github"
+
+
 class TestOllamaJsonParsing:
     def test_rejects_schema_echo(self) -> None:
         raw = '{"type": "object", "properties": {"content": {"type": "string"}}}'

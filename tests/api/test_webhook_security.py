@@ -65,6 +65,14 @@ def test_jira_missing_signature_with_secret_rejected() -> None:
     assert result["reason"] == "invalid_signature"
 
 
+def test_linear_missing_signature_with_secret_rejected() -> None:
+    from connectors.linear.producer import LinearConnector
+
+    conn = LinearConnector(webhook_secret="linear-secret")
+    result = conn.handle_event({"type": "Issue", "action": "create", "data": {}})
+    assert result["reason"] == "invalid_signature"
+
+
 @patch("api.webhooks._get_slack_connector")
 def test_slack_invalid_signature_rejected(mock_get: MagicMock) -> None:
     mock_get.return_value = MagicMock()
