@@ -11,6 +11,8 @@ import type { AssistantMessage, DecisionResult, QueryResponse, ViewId } from "..
 import { WELCOME_MESSAGES, createMessage } from "../lib/assistant";
 import { loadStoredApiKey, persistApiKey } from "../lib/auth";
 import { setClientApiKey } from "../api/client";
+import { loadStoredWorkspace, persistWorkspace } from "../lib/workspace";
+import { viewFromHash, writeViewHash } from "../lib/routing";
 
 type AppContextValue = {
   view: ViewId;
@@ -35,10 +37,12 @@ type AppContextValue = {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<ViewId>("home");
-  const [workspaceId, setWorkspaceId] = useState("local-dev");
-  // Default the guide open on desktop for discovery, collapsed on narrow
-  // viewports so it never blocks content (it opens as an overlay drawer there).
+  const [view, setViewState] = useState<ViewId>(() =>
+    typeof window === "undefined" ? "home" : viewFromHash(),
+  );
+  const [workspaceId, setWorkspaceIdState] = useState(() =>
+    typeof window === "undefined" ? "local-dev" : loadStoredWorkspace(),
+  );
   const [assistantOpen, setAssistantOpen] = useState(
     () => typeof window === "undefined" || window.innerWidth > 1100,
   );
@@ -47,6 +51,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [exploreDecisions, setExploreDecisions] = useState<DecisionResult[]>([]);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [apiKey, setApiKeyState] = useState(() => loadStoredApiKey());
+
+  const setView = useCallback((next: ViewId) => {
+    setViewState(next);
+    writeViewHash(next);
+  }, []);
+
+  const setWorkspaceId = useCallback((id: string) => {
+    setWorkspaceIdState(id);
+    persistWorkspace(id);
+  }, []);
 
   const setApiKey = useCallback((key: string) => {
     setApiKeyState(key);
@@ -61,6 +75,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setClientApiKey(apiKey);
   }, [apiKey]);
+
+  useEffect(() => {
+    const onHashChange = () => setViewState(viewFromHash());
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const pushMessage = useCallback((role: AssistantMessage["role"], content: string) => {
     setMessages((prev) => [...prev, createMessage(role, content)]);
@@ -88,7 +108,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       view,
+      setView,
       workspaceId,
+      setWorkspaceId,
       assistantOpen,
       messages,
       pushMessage,

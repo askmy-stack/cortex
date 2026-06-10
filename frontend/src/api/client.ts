@@ -7,6 +7,7 @@ import type {
   QueryResponse,
 } from "../types";
 import { authHeaders, loadStoredApiKey, resolveApiKey } from "../lib/auth";
+import { normalizeFetchError, parseHttpError } from "../lib/errors";
 
 // Empty base = same-origin requests (e.g. `/query`). In dev the Vite proxy and
 // in prod the nginx reverse proxy forward these to the API, so the dashboard
@@ -30,30 +31,18 @@ function requestHeaders(): Record<string, string> {
   return authHeaders(effectiveApiKey());
 }
 
-/** Surface upstream HTTP status + a trimmed body so the UI can show useful errors. */
-async function parseError(response: Response): Promise<string> {
-  let detail = "";
+async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   try {
-    detail = await response.text();
-  } catch {
-    detail = "";
+    return await fetch(input, init);
+  } catch (error) {
+    throw new Error(normalizeFetchError(error));
   }
-  const status = `${response.status} ${response.statusText || ""}`.trim();
-  if (response.status === 401) {
-    return (
-      "Authentication required (401). Add your API key in Connection settings " +
-      "(top of Ask, Agents, or Review). When CORTEX_API_KEYS is set on the server, " +
-      "requests without a valid key are rejected."
-    );
-  }
-  if (!detail) return `Request failed (${status})`;
-  return `Request failed (${status}): ${detail.slice(0, 200)}`;
 }
 
 export async function fetchHealth(): Promise<Health> {
-  const response = await fetch(`${apiBase}/health`);
+  const response = await apiFetch(`${apiBase}/health`);
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(await parseHttpError(response));
   }
   return response.json() as Promise<Health>;
 }
@@ -63,13 +52,13 @@ export async function queryMemory(body: {
   workspace_id: string;
   limit: number;
 }): Promise<QueryResponse> {
-  const response = await fetch(`${apiBase}/query`, {
+  const response = await apiFetch(`${apiBase}/query`, {
     method: "POST",
     headers: requestHeaders(),
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(await parseHttpError(response));
   }
   return response.json() as Promise<QueryResponse>;
 }
@@ -80,13 +69,13 @@ export async function injectContext(body: {
   agent_id: string;
   max_tokens: number;
 }): Promise<InjectResponse> {
-  const response = await fetch(`${apiBase}/inject`, {
+  const response = await apiFetch(`${apiBase}/inject`, {
     method: "POST",
     headers: requestHeaders(),
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(await parseHttpError(response));
   }
   return response.json() as Promise<InjectResponse>;
 }
@@ -97,7 +86,7 @@ export async function rememberMemory(body: {
   author?: string;
   affects?: string[];
 }): Promise<{ status: string; event_id: string; topic: string }> {
-  const response = await fetch(`${apiBase}/remember`, {
+  const response = await apiFetch(`${apiBase}/remember`, {
     method: "POST",
     headers: requestHeaders(),
     body: JSON.stringify({
@@ -107,18 +96,18 @@ export async function rememberMemory(body: {
     }),
   });
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(await parseHttpError(response));
   }
   return response.json() as Promise<{ status: string; event_id: string; topic: string }>;
 }
 
 export async function fetchContradictions(workspaceId: string): Promise<ContradictionItem[]> {
   const ws = encodeURIComponent(workspaceId);
-  const response = await fetch(`${apiBase}/contradictions/pending?workspace_id=${ws}`, {
+  const response = await apiFetch(`${apiBase}/contradictions/pending?workspace_id=${ws}`, {
     headers: requestHeaders(),
   });
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(await parseHttpError(response));
   }
   return response.json() as Promise<ContradictionItem[]>;
 }
@@ -132,11 +121,11 @@ export async function fetchCausalChain(
     workspace_id: workspaceId,
     max_depth: String(maxDepth),
   });
-  const response = await fetch(`${apiBase}/decisions/${decisionId}/chain?${params}`, {
+  const response = await apiFetch(`${apiBase}/decisions/${decisionId}/chain?${params}`, {
     headers: requestHeaders(),
   });
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(await parseHttpError(response));
   }
   return response.json() as Promise<CausalChainResponse>;
 }
@@ -147,12 +136,12 @@ export async function fetchBySystem(
   limit = 10,
 ): Promise<DecisionResult[]> {
   const params = new URLSearchParams({ workspace_id: workspaceId, limit: String(limit) });
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBase}/decisions/by-system/${encodeURIComponent(systemId)}?${params}`,
     { headers: requestHeaders() },
   );
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(await parseHttpError(response));
   }
   return response.json() as Promise<DecisionResult[]>;
 }
