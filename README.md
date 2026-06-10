@@ -183,6 +183,7 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable distributed tracing (OpenTelemetry O
 | `GET` | `/decisions/{id}/chain` | SUPERSEDES / trigger lineage |
 | `GET` | `/decisions/{id}/conflicts` | Contradiction preview on shared systems |
 | `POST` | `/remember` | Submit explicit memory → Kafka → extractor → graph |
+| `POST` | `/gdpr/erase` | GDPR Right to Erasure — cascade delete subject memory (`admin` / `gdpr_officer` / `legal`) |
 | `POST` | `/webhooks/slack`, `/github`, `/jira`, `/linear` | Connector ingress → Kafka |
 
 Use `docker compose --profile api up` to build the API and pipeline worker, or run `uvicorn api.main:app --reload` from the repo root with services in `.env`.

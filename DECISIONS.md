@@ -23,6 +23,14 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ## ACTIVE INSTRUCTIONS
 
+### 2026-06-10 — GDPR erasure API route (admin-only)
+Priority: HIGH
+Status: DONE — `POST /gdpr/erase` (2026-06-10)
+Detail:
+- `api/gdpr.py` + `MemoryService.erase_gdpr_subject()` wrapping `GdprErasureService`
+- RBAC: `admin`, `gdpr_officer`, or `legal` role required
+- Tests: `tests/api/test_gdpr.py`
+
 ### 2026-06-10 — Phase 2: GitHub + Jira + Linear connector E2E
 Priority: HIGH
 Status: DONE — code complete (2026-06-10); public webhook URLs optional for local dev
