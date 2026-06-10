@@ -31,7 +31,11 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<ViewId>("home");
   const [workspaceId, setWorkspaceId] = useState("local-dev");
-  const [assistantOpen, setAssistantOpen] = useState(true);
+  // Default the guide open on desktop for discovery, collapsed on narrow
+  // viewports so it never blocks content (it opens as an overlay drawer there).
+  const [assistantOpen, setAssistantOpen] = useState(
+    () => typeof window === "undefined" || window.innerWidth > 1100,
+  );
   const [messages, setMessages] = useState<AssistantMessage[]>(WELCOME_MESSAGES);
   const [lastQuery, setLastQuery] = useState<QueryResponse | null>(null);
   const [exploreDecisions, setExploreDecisions] = useState<DecisionResult[]>([]);

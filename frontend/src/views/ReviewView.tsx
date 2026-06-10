@@ -18,10 +18,17 @@ export function ReviewView() {
     try {
       setItems(await fetchContradictions(workspaceId.trim() || "local-dev"));
     } catch (e) {
+      setItems(null);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
+  }, [workspaceId]);
+
+  // Drop stale results immediately when the workspace changes so the prior
+  // workspace's queue never lingers behind a fresh fetch.
+  useEffect(() => {
+    setItems(null);
   }, [workspaceId]);
 
   // Auto-load when the user opens the view and whenever the workspace changes.

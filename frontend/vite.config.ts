@@ -14,6 +14,8 @@ export default defineConfig({
       "/remember": "http://localhost:8000",
       "/decisions": "http://localhost:8000",
       "/contradictions": "http://localhost:8000",
+      "/docs": "http://localhost:8000",
+      "/openapi.json": "http://localhost:8000",
     },
   },
 });

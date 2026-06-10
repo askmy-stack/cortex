@@ -30,25 +30,40 @@ export function ExploreView() {
         </section>
       ) : (
         <>
-          <nav className="subtabs" aria-label="Visualization mode">
+          <div className="subtabs" role="tablist" aria-label="Visualization mode">
             {(["graph", "timeline", "lineage"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
+                role="tab"
+                id={`subtab-${t}`}
+                aria-selected={tab === t}
+                aria-controls={`subpanel-${t}`}
                 className={`subtab ${tab === t ? "subtab--active" : ""}`}
                 onClick={() => setTab(t)}
               >
                 {t === "graph" ? "Relationships" : t === "timeline" ? "Timeline" : "Lineage"}
               </button>
             ))}
-          </nav>
+          </div>
 
-          <section className="panel explore-viz">
+          <section
+            className="panel explore-viz"
+            role="tabpanel"
+            id={`subpanel-${tab}`}
+            aria-labelledby={`subtab-${tab}`}
+          >
             {tab === "graph" ? (
               <MemoryGraph
                 decisions={decisions}
                 focusId={focusId}
-                onFocus={(id) => setSelectedDecisionId(id)}
+                // Graph focus drives card highlight + lineage, both of which need a
+                // real decision id. Person/system nodes are prefixed, so ignore them.
+                onFocus={(id) => {
+                  if (!id.startsWith("person:") && !id.startsWith("system:")) {
+                    setSelectedDecisionId(id);
+                  }
+                }}
               />
             ) : null}
             {tab === "timeline" ? <TimelineView decisions={decisions} /> : null}

@@ -7,12 +7,12 @@ import type {
   QueryResponse,
 } from "../types";
 
-const DEFAULT_API_BASE = "http://localhost:8000";
-
-export const apiBase =
-  String(import.meta.env.VITE_API_URL ?? "")
-    .trim()
-    .replace(/\/$/, "") || DEFAULT_API_BASE;
+// Empty base = same-origin requests (e.g. `/query`). In dev the Vite proxy and
+// in prod the nginx reverse proxy forward these to the API, so the dashboard
+// works wherever it is hosted. Set VITE_API_URL only to target a remote API.
+export const apiBase = String(import.meta.env.VITE_API_URL ?? "")
+  .trim()
+  .replace(/\/$/, "");
 
 /** Surface upstream HTTP status + a trimmed body so the UI can show useful errors. */
 async function parseError(response: Response): Promise<string> {

@@ -31,6 +31,7 @@ export function AssistantPanel() {
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const thinkingTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -42,6 +43,18 @@ export function AssistantPanel() {
       if (thinkingTimer.current !== undefined) window.clearTimeout(thinkingTimer.current);
     };
   }, []);
+
+  // When the guide opens, move focus to the input and let Escape close it so
+  // the overlay drawer behaves like a proper dialog on touch devices.
+  useEffect(() => {
+    if (!assistantOpen) return;
+    inputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAssistantOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [assistantOpen, setAssistantOpen]);
 
   const handleAsk = useCallback(() => {
     const q = draft.trim();
@@ -97,8 +110,15 @@ export function AssistantPanel() {
   }
 
   return (
-    <aside className="assistant-panel" aria-label="Cortex guide">
-      <header className="assistant-panel__head">
+    <>
+      <button
+        type="button"
+        className="assistant-backdrop"
+        aria-label="Close guide"
+        onClick={() => setAssistantOpen(false)}
+      />
+      <aside className="assistant-panel" aria-label="Cortex guide" role="complementary">
+        <header className="assistant-panel__head">
         <div>
           <h2>Cortex Guide</h2>
           <p>Your companion for organizational memory</p>
@@ -123,7 +143,7 @@ export function AssistantPanel() {
           </article>
         ))}
         {thinking ? (
-          <article className="assistant-msg assistant-msg--assistant" aria-hidden>
+          <article className="assistant-msg assistant-msg--assistant">
             <TypingIndicator />
           </article>
         ) : null}
@@ -131,6 +151,7 @@ export function AssistantPanel() {
       </div>
       <footer className="assistant-panel__foot">
         <input
+          ref={inputRef}
           type="text"
           className="input"
           placeholder="What would you like to know?"
@@ -148,6 +169,7 @@ export function AssistantPanel() {
           Send
         </button>
       </footer>
-    </aside>
+      </aside>
+    </>
   );
 }
