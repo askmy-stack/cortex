@@ -261,13 +261,20 @@ class SlackConnector:
             workspace_id=self.workspace_id,
         )
 
-    def handle_event(self, payload: dict[str, Any]) -> dict[str, str]:
+    def handle_event(
+        self,
+        payload: dict[str, Any],
+        *,
+        slack_retry_num: int | None = None,
+    ) -> dict[str, str]:
         """Process an incoming Slack Events API payload.
 
         Normalises the payload into a RawEvent and publishes to Kafka.
 
         Args:
             payload: Raw Slack webhook payload (already JSON-parsed).
+            slack_retry_num: Value of Slack ``X-Slack-Retry-Num`` header, if present.
+                Retries are skipped — the first delivery is processed once.
 
         Returns:
             {"status": "ok"} on success, {"status": "skipped", "reason": ...} if not applicable.
@@ -278,13 +285,21 @@ class SlackConnector:
             log.info("slack.url_verification", challenge=challenge[:8])
             return {"challenge": challenge}
 
-        # Slack retry header — deduplicate
+        if slack_retry_num is not None and slack_retry_num > 0:
+            log.info(
+                "slack.event.skipped",
+                reason="slack_retry",
+                retry_num=slack_retry_num,
+            )
+            return {"status": "skipped", "reason": "slack_retry"}
+
         if payload.get("type") == "event_callback":
             raw_event = normalise_slack_event(payload, self.workspace_id)
             if raw_event is None:
                 return {"status": "skipped", "reason": "not_processable"}
 
             self._producer.publish(raw_event)
+            self._producer.flush(timeout=5.0)
             return {"status": "ok", "event_id": raw_event.event_id}
 
         log.debug("slack.payload.unrecognised", payload_type=payload.get("type"))

@@ -233,6 +233,7 @@ class TestSlackConnector:
         self, mock_producer_cls: MagicMock
     ) -> None:
         mock_producer = MagicMock()
+        mock_producer.flush.return_value = 0
         mock_producer_cls.return_value = mock_producer
 
         connector = SlackConnector(workspace_id=WORKSPACE_ID)
@@ -242,6 +243,18 @@ class TestSlackConnector:
         assert result["status"] == "ok"
         assert "event_id" in result
         mock_producer.produce.assert_called_once()
+        mock_producer.flush.assert_called_once()
+
+    @patch("connectors.slack.producer.Producer")
+    def test_slack_retry_skips_publish(self, mock_producer_cls: MagicMock) -> None:
+        mock_producer = MagicMock()
+        mock_producer_cls.return_value = mock_producer
+
+        connector = SlackConnector(workspace_id=WORKSPACE_ID)
+        result = connector.handle_event(_message_payload(), slack_retry_num=1)
+
+        assert result == {"status": "skipped", "reason": "slack_retry"}
+        mock_producer.produce.assert_not_called()
 
     @patch("connectors.slack.producer.Producer")
     def test_bot_message_returns_skipped(

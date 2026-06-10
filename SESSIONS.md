@@ -336,3 +336,37 @@
 ### Next session starts with
 - Owner review of the PR opened against `main` from `feature/production-refinement`.
 - Optional: introduce Vitest + Testing Library for the frontend (deferred — out of scope per task constraints).
+
+---
+
+## Session — 2026-06-10 — Phase 1 Slack pipeline (handoff)
+**Duration:** ~3h (gap closure passes + ops stabilization + Phase 1 start)
+**Phase:** Phase 1 — Kafka + Slack connector + decision extractor
+
+### Built
+**Gap closure & ops (merged PRs #5–#7; PR #8 ops stabilization)**
+- E2E Playwright, k6 load test, staging smoke, Prometheus `/metrics`, OTel + Jaeger profile
+- mlflow port **5001**, Qdrant TCP healthcheck, CI k6 via `grafana/setup-k6-action@v1`
+
+**Phase 1 Slack pipeline (branch `feature/phase-1-slack-pipeline`, uncommitted)**
+- `docker-compose.yml` — `KAFKA_BOOTSTRAP_SERVERS` on **api** service (webhook can publish)
+- `connectors/slack/producer.py` — skip Slack retries (`slack_retry_num > 0`); **flush after publish**
+- `api/webhooks.py` — reads `X-Slack-Retry-Num`, passes to connector
+- `scripts/inject_slack_message.py` — dev inject to `cortex.raw.slack.messages` (`--dry-run` supported)
+- Tests: retry skip + flush assertions; `tests/integration/test_slack_pipeline_e2e.py`; inject script tests
+
+### State at end
+- Branch **`feature/phase-1-slack-pipeline`** with uncommitted changes (see git status)
+- Slack unit + integration tests pass locally; full suite should be re-run before PR
+- **Not yet validated:** live inject → pipeline-worker → Neo4j with Ollama/OpenAI running
+- **Not yet done:** commit, push, open PR
+
+### Next session starts with
+1. `pytest tests/` on `feature/phase-1-slack-pipeline`
+2. Stack up: `docker compose --profile api up -d`
+3. Live path: `python scripts/inject_slack_message.py` → watch pipeline-worker → verify Decision in Neo4j
+4. Commit, push, `gh pr create` for Phase 1 branch
+5. Confirm PR #8 merged and staging-validation CI green on `main`
+
+[OWNER NOTES]
+- Pick up Phase 1 from this branch; no commit yet — owner decides message/PR scope.

@@ -107,6 +107,7 @@ async def slack_webhook(
         default=None,
         alias="X-Slack-Request-Timestamp",
     ),
+    x_slack_retry_num: str | None = Header(default=None, alias="X-Slack-Retry-Num"),
 ) -> dict[str, Any]:
     """Receive Slack Events API callbacks."""
     body = await request.body()
@@ -123,7 +124,13 @@ async def slack_webhook(
         )
 
     payload = _parse_json_body(body)
-    result = _get_slack_connector().handle_event(payload)
+    retry_num: int | None = None
+    if x_slack_retry_num is not None:
+        try:
+            retry_num = int(x_slack_retry_num)
+        except ValueError:
+            retry_num = None
+    result = _get_slack_connector().handle_event(payload, slack_retry_num=retry_num)
     if "challenge" in result:
         return result
     return result
