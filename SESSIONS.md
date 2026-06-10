@@ -500,11 +500,10 @@
 - Docs: `README.md` API table, `DECISIONS.md` instruction marked DONE, `CLAUDE.md` phase status updated
 
 ### State at end
-- Branch **`feature/gdpr-erasure-api`** from `main` (includes merged PR #12 + #13)
+- Branch **`feature/gdpr-erasure-api`** — committed `cf0a3f9`, **PR #14** open
 - **343 passed** (full suite, `--no-cov`)
-- Changes uncommitted
 
 ### Next session starts with
-1. Commit + PR for GDPR erasure API
+1. Merge PR #14 after CI green
 2. LLM-backed CMVK verifiers (production)
 3. Phase 6: dashboard polish + demo video
