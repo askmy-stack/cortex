@@ -79,17 +79,29 @@ def main() -> int:
         return 0
 
     from graph.writer import GraphWriter
+    from memory.quarantine import persist_quarantine
+    from scoring.write_pipeline import DecisionScoringPipeline, write_reject_reason
 
+    scoring = DecisionScoringPipeline()
     writer = GraphWriter()
     written: list[str] = []
+    skipped = 0
     try:
         for decision in decisions:
+            scoring.score(decision)
+            reject = write_reject_reason(decision)
+            if reject is not None:
+                persist_quarantine(decision, reject)
+                skipped += 1
+                continue
             written.append(writer.write(decision))
     finally:
         writer.close()
 
     print(f"Demo seed complete for workspace={args.workspace!r} scale={scale!r}")
     print(f"  Wrote {len(written)} decisions")
+    if skipped:
+        print(f"  Skipped {skipped} decisions (importance/trust thresholds)")
     sample = json.dumps(
         {
             "query": "Why CockroachDB payments?",

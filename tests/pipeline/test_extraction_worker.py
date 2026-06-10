@@ -50,8 +50,7 @@ def _decision() -> DecisionEvent:
 
 
 @patch("pipeline.extraction_worker.GraphWriter")
-@patch("pipeline.extraction_worker.TrustScorer")
-@patch("pipeline.extraction_worker.ImportanceScorer")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
 @patch("pipeline.extraction_worker.DecisionExtractor")
 @patch("pipeline.extraction_worker.Producer")
 @patch("pipeline.extraction_worker.Consumer")
@@ -59,16 +58,13 @@ def test_process_raw_event_writes_and_publishes(
     consumer_cls: MagicMock,
     producer_cls: MagicMock,
     extractor_cls: MagicMock,
-    importance_cls: MagicMock,
-    trust_cls: MagicMock,
+    scoring_cls: MagicMock,
     writer_cls: MagicMock,
 ) -> None:
     extractor = extractor_cls.return_value
     extractor.extract.return_value = _decision()
-    importance = importance_cls.return_value
-    importance.score.side_effect = lambda decision: decision
-    trust = trust_cls.return_value
-    trust.score.side_effect = lambda decision: decision
+    scoring = scoring_cls.return_value
+    scoring.score.side_effect = lambda decision: decision
     writer = writer_cls.return_value
     writer.write.return_value = "decision-1"
 
@@ -76,8 +72,59 @@ def test_process_raw_event_writes_and_publishes(
     event_id = worker.process_raw_event(_raw_event())
 
     assert event_id == "decision-1"
+    scoring.score.assert_called_once()
     writer.write.assert_called_once()
     producer_cls.return_value.produce.assert_called_once()
+
+
+@patch("pipeline.extraction_worker.persist_quarantine")
+@patch("pipeline.extraction_worker.GraphWriter")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
+@patch("pipeline.extraction_worker.DecisionExtractor")
+@patch("pipeline.extraction_worker.Producer")
+@patch("pipeline.extraction_worker.Consumer")
+def test_process_raw_event_quarantines_low_trust(
+    consumer_cls: MagicMock,
+    producer_cls: MagicMock,
+    extractor_cls: MagicMock,
+    scoring_cls: MagicMock,
+    writer_cls: MagicMock,
+    quarantine_mock: MagicMock,
+) -> None:
+    decision = _decision()
+    decision.trust_score = 0.1
+    decision.importance_score = 0.75
+    extractor_cls.return_value.extract.return_value = decision
+    scoring_cls.return_value.score.side_effect = lambda d: d
+
+    worker = ExtractionWorker(bootstrap_servers="localhost:9092")
+    assert worker.process_raw_event(_raw_event()) is None
+    writer_cls.return_value.write.assert_not_called()
+    producer_cls.return_value.produce.assert_not_called()
+    quarantine_mock.assert_called_once()
+
+
+@patch("pipeline.extraction_worker.GraphWriter")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
+@patch("pipeline.extraction_worker.DecisionExtractor")
+@patch("pipeline.extraction_worker.Producer")
+@patch("pipeline.extraction_worker.Consumer")
+def test_process_raw_event_discards_low_importance(
+    consumer_cls: MagicMock,
+    producer_cls: MagicMock,
+    extractor_cls: MagicMock,
+    scoring_cls: MagicMock,
+    writer_cls: MagicMock,
+) -> None:
+    decision = _decision()
+    decision.importance_score = 0.1
+    decision.trust_score = 0.8
+    extractor_cls.return_value.extract.return_value = decision
+    scoring_cls.return_value.score.side_effect = lambda d: d
+
+    worker = ExtractionWorker(bootstrap_servers="localhost:9092")
+    assert worker.process_raw_event(_raw_event()) is None
+    writer_cls.return_value.write.assert_not_called()
 
 
 def test_bounded_seen_cache_evicts_lru() -> None:

@@ -52,6 +52,7 @@ _UNSET: list = []  # sentinel — distinguish None from explicitly-passed empty 
 
 def _make_decision(
     importance_score: float = 0.75,
+    trust_score: float = 0.80,
     made_by: list[str] | None = None,
     affects: list[str] | None = None,
     rationale: list[str] | None = None,
@@ -68,7 +69,7 @@ def _make_decision(
         replaces=replaces,
         extraction_confidence=0.90,
         importance_score=importance_score,
-        trust_score=0.80,
+        trust_score=trust_score,
         provenance=_make_provenance(),
         extracted_at=NOW,
     )
@@ -109,6 +110,15 @@ class TestGraphWriterInit:
 
 
 class TestWriteImportanceThreshold:
+    @patch("graph.writer.GraphDatabase")
+    def test_raises_when_unscored(self, mock_gdb: MagicMock) -> None:
+        mock_gdb.driver.return_value = MagicMock()
+        writer = GraphWriter(uri="bolt://x", user="u", password="p")
+        decision = _make_decision(importance_score=0.0, trust_score=0.0)
+
+        with pytest.raises(ValueError, match="ImportanceScorer and TrustScorer"):
+            writer.write(decision)
+
     @patch("graph.writer.GraphDatabase")
     def test_raises_below_importance_discard(self, mock_gdb: MagicMock) -> None:
         mock_gdb.driver.return_value = MagicMock()

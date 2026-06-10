@@ -27,6 +27,7 @@ from neo4j import Driver, GraphDatabase
 
 from graph.rbac import serialize_access_policy
 from scoring.trust_scorer import is_writable
+from scoring.write_pipeline import assert_scored_for_write
 from shared.models import IMPORTANCE_DISCARD, DecisionEvent
 
 log = structlog.get_logger(__name__)
@@ -187,9 +188,11 @@ class GraphWriter:
             decision.event_id on success.
 
         Raises:
-            ValueError: If importance_score is below discard threshold.
+            ValueError: If scores are unset or below write thresholds.
             Neo4jError: On graph write failure.
         """
+        assert_scored_for_write(decision)
+
         if decision.importance_score < IMPORTANCE_DISCARD:
             log.info(
                 "graph.write.discarded",

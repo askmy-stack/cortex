@@ -12,8 +12,7 @@ NOW = datetime(2026, 5, 11, 12, 0, 0, tzinfo=UTC)
 
 
 @patch("pipeline.extraction_worker.GraphWriter")
-@patch("pipeline.extraction_worker.TrustScorer")
-@patch("pipeline.extraction_worker.ImportanceScorer")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
 @patch("pipeline.extraction_worker.DecisionExtractor")
 @patch("pipeline.extraction_worker.Producer")
 @patch("pipeline.extraction_worker.Consumer")
@@ -21,8 +20,7 @@ def test_webhook_to_graph_pipeline(
     consumer_cls: MagicMock,
     producer_cls: MagicMock,
     extractor_cls: MagicMock,
-    importance_cls: MagicMock,
-    trust_cls: MagicMock,
+    scoring_cls: MagicMock,
     writer_cls: MagicMock,
 ) -> None:
     raw_event = RawEvent(
@@ -59,8 +57,7 @@ def test_webhook_to_graph_pipeline(
     )
 
     extractor_cls.return_value.extract.return_value = decision
-    importance_cls.return_value.score.side_effect = lambda item: item
-    trust_cls.return_value.score.side_effect = lambda item: item
+    scoring_cls.return_value.score.side_effect = lambda item: item
     writer_cls.return_value.write.return_value = decision.event_id
 
     worker = ExtractionWorker(bootstrap_servers="localhost:9092")

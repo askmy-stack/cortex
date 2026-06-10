@@ -25,8 +25,7 @@ def _raw() -> RawEvent:
 
 
 @patch("pipeline.extraction_worker.GraphWriter")
-@patch("pipeline.extraction_worker.TrustScorer")
-@patch("pipeline.extraction_worker.ImportanceScorer")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
 @patch("pipeline.extraction_worker.DecisionExtractor")
 @patch("pipeline.extraction_worker.Producer")
 @patch("pipeline.extraction_worker.Consumer")
@@ -34,8 +33,7 @@ def test_extractor_returns_none_skips_write(
     consumer_cls: MagicMock,
     producer_cls: MagicMock,
     extractor_cls: MagicMock,
-    importance_cls: MagicMock,
-    trust_cls: MagicMock,
+    scoring_cls: MagicMock,
     writer_cls: MagicMock,
 ) -> None:
     extractor_cls.return_value.extract.return_value = None
@@ -45,8 +43,7 @@ def test_extractor_returns_none_skips_write(
 
 
 @patch("pipeline.extraction_worker.GraphWriter")
-@patch("pipeline.extraction_worker.TrustScorer")
-@patch("pipeline.extraction_worker.ImportanceScorer")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
 @patch("pipeline.extraction_worker.DecisionExtractor")
 @patch("pipeline.extraction_worker.Producer")
 @patch("pipeline.extraction_worker.Consumer")
@@ -54,8 +51,7 @@ def test_low_importance_discarded_before_write(
     consumer_cls: MagicMock,
     producer_cls: MagicMock,
     extractor_cls: MagicMock,
-    importance_cls: MagicMock,
-    trust_cls: MagicMock,
+    scoring_cls: MagicMock,
     writer_cls: MagicMock,
 ) -> None:
     raw = _raw()
@@ -81,18 +77,15 @@ def test_low_importance_discarded_before_write(
         extracted_at=NOW,
     )
     extractor_cls.return_value.extract.return_value = decision
-    importance_cls.return_value.score.side_effect = lambda item: item
-    trust_cls.return_value.score.side_effect = lambda item: item
-    writer_cls.return_value.write.side_effect = ValueError("below discard threshold")
+    scoring_cls.return_value.score.side_effect = lambda item: item
 
     worker = ExtractionWorker(bootstrap_servers="localhost:9092")
     assert worker.process_raw_event(raw) is None
-    writer_cls.return_value.write.assert_called_once()
+    writer_cls.return_value.write.assert_not_called()
 
 
 @patch("pipeline.extraction_worker.GraphWriter")
-@patch("pipeline.extraction_worker.TrustScorer")
-@patch("pipeline.extraction_worker.ImportanceScorer")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
 @patch("pipeline.extraction_worker.DecisionExtractor")
 @patch("pipeline.extraction_worker.Producer")
 @patch("pipeline.extraction_worker.Consumer")
@@ -100,8 +93,7 @@ def test_invalid_message_routed_to_dlq(
     consumer_cls: MagicMock,
     producer_cls: MagicMock,
     extractor_cls: MagicMock,
-    importance_cls: MagicMock,
-    trust_cls: MagicMock,
+    scoring_cls: MagicMock,
     writer_cls: MagicMock,
 ) -> None:
     worker = ExtractionWorker(bootstrap_servers="localhost:9092")
