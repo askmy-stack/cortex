@@ -8,7 +8,7 @@
 
 ## Executive summary
 
-Cortex is **merge-ready with caveats**. Backend test coverage is strong (284 tests, 82% coverage). Frontend builds cleanly with 6 Vitest tests and Playwright smoke coverage. Demo seed data expanded **5.5×** (2 → 11 base decisions, up to **110** at enterprise scale). Uncommitted UI changes (Assist rename, bug report section, light-mode removal) should be committed before opening the final PR.
+Cortex is **merge-ready with caveats**. Backend test coverage is strong (286 tests, 82% coverage). Frontend builds cleanly with 6 Vitest tests and Playwright smoke coverage. Demo seed data expanded **5.5×** (2 → 11 base decisions, up to **110** at enterprise scale). Uncommitted UI changes (Assist rename, bug report section, light-mode removal) should be committed before opening the final PR.
 
 **Recommendation:** Merge to `main` after one commit bundling pending frontend + validation changes, then run Neo4j-backed smoke in staging.
 
@@ -20,7 +20,7 @@ Cortex is **merge-ready with caveats**. Backend test coverage is strong (284 tes
 
 | Suite | Result | Count |
 |-------|--------|-------|
-| Python `pytest tests/` | ✅ Pass | 284 tests |
+| Python `pytest tests/` | ✅ Pass | 286 tests |
 | Coverage (`fail-under=70`) | ✅ Pass | 82.39% |
 | Frontend `npm test` (Vitest) | ✅ Pass | 6 tests |
 | Frontend `npm run build` | ✅ Pass | TypeScript + Vite |
@@ -118,11 +118,15 @@ curl -X POST localhost:8000/query -H "Content-Type: application/json" \
 - [x] Accessibility — `@axe-core/playwright` audit in `frontend/e2e/a11y.spec.ts`
 - [x] Observability — `GET /metrics` Prometheus endpoint (`api/metrics.py`)
 
-**Still open (post-MVP):**
+**Completed (post-MVP pass, 2026-06-10):**
+
+- [x] CI staging validation — `.github/workflows/staging-validation.yml` + `scripts/ci_staging_validation.sh`
+- [x] OpenTelemetry tracing — `api/telemetry.py` (OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set)
+
+**Still open:**
 
 - Consider `scripts/` → `tools/` consolidation (low priority)
-- Run k6 + staging smoke against a live Neo4j/Redis/Kafka deployment in CI (manual staging job)
-- Full APM tracing (OpenTelemetry) beyond Prometheus counters/histograms
+- OpenTelemetry collector service in docker-compose (optional local Jaeger/OTel stack)
 
 ---
 
@@ -163,7 +167,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 
 | Dimension | Rating | Evidence |
 |-----------|--------|----------|
-| Backend API | 🟢 Ready | 284 tests, health + `/metrics`, RBAC at graph layer |
+| Backend API | 🟢 Ready | 286 tests, health + `/metrics`, RBAC at graph layer |
 | Graph / Neo4j | 🟢 Ready | Migrations, writer, query service, lineage fix |
 | Pipeline | 🟡 Staging | Unit + integration mocked; needs live Kafka demo |
 | Frontend | 🟢 Ready | Build passes, responsive CSS, mobile nav |

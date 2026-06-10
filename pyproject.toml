@@ -37,6 +37,11 @@ dependencies = [
     "spacy>=3.7.4",
     # Logging
     "structlog>=24.2.0",
+    # OpenTelemetry (optional — enabled via OTEL_EXPORTER_OTLP_ENDPOINT)
+    "opentelemetry-api>=1.42.0",
+    "opentelemetry-sdk>=1.42.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.42.0",
+    "opentelemetry-instrumentation-fastapi>=0.51b0",
     # Auth
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",

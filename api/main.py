@@ -37,6 +37,7 @@ from api.schemas import (
     QueryRequest,
     QueryResponse,
 )
+from api.telemetry import setup_telemetry
 from api.webhooks import router as webhooks_router
 
 log = structlog.get_logger(__name__)
@@ -328,3 +329,6 @@ async def unhandled_exception_handler(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
     )
+
+
+setup_telemetry(app)
