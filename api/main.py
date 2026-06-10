@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.contradictions import router as contradictions_router
+from api.gdpr import router as gdpr_router
 from api.metrics import record_http_request, record_query, render_metrics
 from api.decisions import router as decisions_router
 from api.deps import RolesDep, memory, set_memory_service
@@ -95,6 +96,7 @@ app.add_middleware(
 
 app.include_router(webhooks_router)
 app.include_router(contradictions_router)
+app.include_router(gdpr_router)
 app.include_router(decisions_router)
 app.include_router(remember_router)
 

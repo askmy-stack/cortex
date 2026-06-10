@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -9,6 +10,7 @@ from typing import Any
 
 import structlog
 
+from graph.gdpr import GdprErasureService
 from graph.query import GraphQueryService
 from memory.semantic import search_decision_ids, semantic_enabled
 from scoring.trust_scorer import is_injectable
@@ -21,6 +23,7 @@ class MemoryService:
 
     def __init__(self) -> None:
         self._graph = GraphQueryService()
+        self._gdpr = GdprErasureService()
         self._redis = self._build_redis_client()
 
     @staticmethod
@@ -217,6 +220,32 @@ class MemoryService:
             caller_roles=caller_roles,
         )
 
+    async def erase_gdpr_subject(
+        self,
+        *,
+        workspace_id: str,
+        person_id: str,
+        requested_by: str,
+        caller_roles: list[str],
+        reason: str = "gdpr_right_to_erasure",
+    ) -> dict[str, Any]:
+        """Cascade-delete a data subject and linked memory nodes."""
+        result = await asyncio.to_thread(
+            self._gdpr.erase_subject,
+            workspace_id=workspace_id,
+            person_id=person_id,
+            requested_by=requested_by,
+            caller_roles=caller_roles,
+            reason=reason,
+        )
+        return {
+            "audit_id": result.audit_id,
+            "workspace_id": result.workspace_id,
+            "person_id": result.person_id,
+            "decisions_deleted": result.decisions_deleted,
+            "requested_by": result.requested_by,
+        }
+
     async def neo4j_health(self) -> str:
         """Return ``'ok'`` when the shared async driver is reachable."""
         return "ok" if await self._graph.health() else "unreachable"
@@ -233,3 +262,4 @@ class MemoryService:
 
     async def close(self) -> None:
         await self._graph.close()
+        self._gdpr.close()

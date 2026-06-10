@@ -93,9 +93,9 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 
 ## Current Phase
 
-**Phase:** 4 — Importance scorer + trust scorer + RBAC (PR #12 open)
-**Status:** Phase 2 complete (PR #11); Phase 4 in review
-**Next phase:** Phase 5 — Contradiction detector + decay engine
+**Phase:** 4 — Importance scorer + trust scorer + RBAC
+**Status:** Phases 2–4 complete on `main`; GDPR erasure API in progress
+**Next phase:** Phase 6 — Dashboard polish + demo launch (Phase 5 intelligence modules shipped)
 **Target:** Working MVP demo in 4 weeks
 
 ---
@@ -107,9 +107,9 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 | 0 | Architecture + documentation | Complete | ✅ Done |
 | 1 | Kafka + Slack connector + decision extractor | Week 1 | ✅ Done |
 | 2 | GitHub + Jira connectors + Neo4j graph schema | Week 1-2 | ✅ Done |
-| 3 | `cortex.query()` API + Redis cache + MCP server | Week 2 | ⏳ |
-| 4 | Importance scorer + trust scorer + RBAC | Week 2-3 | ⏳ |
-| 5 | Contradiction detector + decay engine | Week 3 | ⏳ |
+| 3 | `cortex.query()` API + Redis cache + MCP server | Week 2 | ✅ Done |
+| 4 | Importance scorer + trust scorer + RBAC | Week 2-3 | ✅ Done |
+| 5 | Contradiction detector + decay engine | Week 3 | ✅ Done |
 | 6 | React dashboard + knowledge graph explorer | Week 3-4 | ⏳ |
 | 7 | Demo video + README polish + open-source launch | Week 4 | ⏳ |
 | 8 | Outcome tracking + coverage scoring | Post-launch | ⏳ |

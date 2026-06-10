@@ -485,3 +485,26 @@
 1. Commit + open PR for Phase 4 branch
 2. LLM-backed CMVK verifiers (production)
 3. GDPR erasure API route (admin-only)
+
+---
+
+## Session — 2026-06-10 — GDPR erasure API + post-merge sync
+**Duration:** ~20m
+**Phase:** Phase 4 completion — GDPR compliance API
+
+### Built
+- **`api/gdpr.py`** — `POST /gdpr/erase` admin-only route (`admin` / `gdpr_officer` / `legal`)
+- **`api/memory.py`** — `erase_gdpr_subject()` via `asyncio.to_thread` + `GdprErasureService`; driver closed on shutdown
+- **`api/main.py`** — registered GDPR router
+- **`tests/api/test_gdpr.py`** — success, 403, 404, 503 cases
+- Docs: `README.md` API table, `DECISIONS.md` instruction marked DONE, `CLAUDE.md` phase status updated
+
+### State at end
+- Branch **`feature/gdpr-erasure-api`** from `main` (includes merged PR #12 + #13)
+- **343 passed** (full suite, `--no-cov`)
+- Changes uncommitted
+
+### Next session starts with
+1. Commit + PR for GDPR erasure API
+2. LLM-backed CMVK verifiers (production)
+3. Phase 6: dashboard polish + demo video
