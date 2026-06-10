@@ -10,6 +10,7 @@ from confluent_kafka import KafkaException, Producer
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
+from api.deps import RolesDep
 from shared.models import RawEvent
 
 log = structlog.get_logger(__name__)
@@ -52,7 +53,7 @@ def _producer() -> Producer:
     response_model=RememberResponse,
     summary="Submit explicit organizational memory",
 )
-async def remember(request: RememberRequest) -> RememberResponse:
+async def remember(request: RememberRequest, roles: RolesDep) -> RememberResponse:
     """Publish a manual RawEvent to Kafka for extraction and graph write.
 
     Same pipeline as connector webhooks: importance → trust → Neo4j.
@@ -89,5 +90,6 @@ async def remember(request: RememberRequest) -> RememberResponse:
         "remember.published",
         event_id=raw.event_id,
         workspace_id=request.workspace_id,
+        caller_roles=roles,
     )
     return RememberResponse(status="queued", event_id=raw.event_id, topic=KAFKA_TOPIC)

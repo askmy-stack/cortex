@@ -54,3 +54,16 @@ def test_route_rejects_missing_key_when_configured(monkeypatch: pytest.MonkeyPat
     client = TestClient(app)
     response = client.get("/contradictions/pending", params={"workspace_id": "ws-1"})
     assert response.status_code == 401
+
+
+def test_remember_rejects_missing_key_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CORTEX_API_KEYS", "sk_a:authenticated")
+    client = TestClient(app)
+    response = client.post(
+        "/remember",
+        json={
+            "workspace_id": "ws-1",
+            "content": "We standardized on OpenTelemetry for all new services.",
+        },
+    )
+    assert response.status_code == 401
