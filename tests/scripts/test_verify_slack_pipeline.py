@@ -49,3 +49,12 @@ def test_main_dry_run() -> None:
         patch.object(sys, "argv", ["verify_slack_pipeline.py", "--dry-run"]),
     ):
         assert verify.main() == 0
+
+
+def test_main_dry_run_github_source() -> None:
+    with (
+        patch.object(verify, "check_ollama", return_value=(True, "ok")),
+        patch.object(verify, "count_decisions", return_value=3),
+        patch.object(sys, "argv", ["verify_slack_pipeline.py", "--source", "github", "--dry-run"]),
+    ):
+        assert verify.main() == 0

@@ -341,13 +341,16 @@ class TestGitHubConnector:
     def test_handle_event_publishes_and_returns_ok(
         self, mock_producer_cls: MagicMock
     ) -> None:
-        mock_producer_cls.return_value = MagicMock()
+        mock_producer = MagicMock()
+        mock_producer.flush.return_value = 0
+        mock_producer_cls.return_value = mock_producer
         connector = GitHubConnector(workspace_id=WORKSPACE_ID)
         result = connector.handle_event(
             _pr_payload("opened"), event_type="pull_request"
         )
         assert result["status"] == "ok"
         assert "event_id" in result
+        mock_producer.flush.assert_called_once()
 
     @patch("connectors.github.producer.Producer")
     def test_handle_unhandled_event_returns_skipped(

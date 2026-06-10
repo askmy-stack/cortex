@@ -394,3 +394,28 @@
 1. Merge live E2E PR; configure real Slack app webhook
 2. Optional: slim pipeline-worker Docker image (worker-only deps)
 3. Demo recording per `docs/DEMO_RECORDING.md`
+
+---
+
+## Session — 2026-06-10 — Phase 2 kickoff: GitHub + Jira live E2E
+**Duration:** ~45m
+**Phase:** Phase 2 — GitHub + Jira connectors + Neo4j graph schema
+
+### Built
+- **`scripts/inject_github_event.py`**, **`scripts/inject_jira_event.py`** — dev inject without webhooks
+- **`scripts/init_kafka_topics.py`** + **`make init-kafka`** — pre-create raw/DLQ/extracted topics
+- **Unified verify:** `--source slack|github|jira` on verify script; **`make verify-github`**, **`verify-jira`**, **`verify-connectors`**
+- **Flush after publish** on GitHub/Jira connectors (parity with Slack)
+- Integration tests: `test_github_pipeline_e2e.py`, `test_jira_pipeline_e2e.py`
+
+### State at end
+- **`make verify-pipeline`** PASS (13 → 14 on main after merge)
+- **`make verify-github`** PASS (13 → 14) — ~23s
+- **`make verify-jira`** PASS (14 → 15) — ~12s
+- **298** pytest passing
+- Branch **`feature/phase-2-github-jira`** ready for PR
+
+### Next session starts with
+1. Real GitHub/Jira webhook URLs (ngrok or deploy)
+2. Phase 3: `cortex.query()` hardening + MCP live inject wiring
+3. Graph schema validation against multi-source decisions

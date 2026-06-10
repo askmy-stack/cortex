@@ -93,9 +93,9 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 
 ## Current Phase
 
-**Phase:** 0 — Documentation and architecture finalization
-**Status:** Complete
-**Next phase:** Phase 1 — Kafka infrastructure + Slack connector + decision extractor
+**Phase:** 1 — Kafka + Slack connector + decision extractor
+**Status:** Complete (PR #9–#10 merged, live E2E verified)
+**Next phase:** Phase 2 — GitHub + Jira connectors + Neo4j graph schema
 **Target:** Working MVP demo in 4 weeks
 
 ---
@@ -105,8 +105,8 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 | Phase | Scope | Duration | Status |
 |---|---|---|---|
 | 0 | Architecture + documentation | Complete | ✅ Done |
-| 1 | Kafka + Slack connector + decision extractor | Week 1 | 🔄 Next |
-| 2 | GitHub + Jira connectors + Neo4j graph schema | Week 1-2 | ⏳ |
+| 1 | Kafka + Slack connector + decision extractor | Week 1 | ✅ Done |
+| 2 | GitHub + Jira connectors + Neo4j graph schema | Week 1-2 | 🔄 In progress |
 | 3 | `cortex.query()` API + Redis cache + MCP server | Week 2 | ⏳ |
 | 4 | Importance scorer + trust scorer + RBAC | Week 2-3 | ⏳ |
 | 5 | Contradiction detector + decay engine | Week 3 | ⏳ |
