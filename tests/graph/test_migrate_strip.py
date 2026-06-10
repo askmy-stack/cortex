@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from graph.migrate import _strip_leading_comments
+from graph.migrate import _strip_leading_comments, get_migration_files
+
+
+def test_v009_rbac_enforcement_migration_registered() -> None:
+    versions = {version for version, _, _ in get_migration_files()}
+    assert 9 in versions
 
 
 def test_strip_leading_comments_preserves_create_after_header() -> None:

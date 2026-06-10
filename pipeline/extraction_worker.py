@@ -16,9 +16,9 @@ from extraction.decision_extractor import DecisionExtractor
 from graph.writer import GraphWriter
 from intelligence.contradiction_detector import ContradictionDetector
 from memory.episodic import append_raw_event
+from memory.quarantine import persist_quarantine
 from memory.semantic import upsert_decision_vector
-from scoring.importance import ImportanceScorer
-from scoring.trust_scorer import TrustScorer, is_writable
+from scoring.write_pipeline import DecisionScoringPipeline, write_reject_reason
 from shared.models import RawEvent
 
 log = structlog.get_logger(__name__)
@@ -111,8 +111,7 @@ class ExtractionWorker:
             }
         )
         self._extractor = DecisionExtractor()
-        self._importance = ImportanceScorer()
-        self._trust = TrustScorer()
+        self._scoring = DecisionScoringPipeline()
         self._writer = GraphWriter()
         self._contradictions: ContradictionDetector | None = None
         self._processed = _BoundedSeenCache(PROCESSED_CACHE_SIZE)
@@ -151,15 +150,32 @@ class ExtractionWorker:
             self._processed.add(raw_event.event_id)
             return None
 
-        self._importance.score(decision)
-        self._trust.score(decision)
+        self._scoring.score(decision)
 
-        if not is_writable(decision.trust_score):
-            log.info(
-                "pipeline.event.quarantined",
-                event_id=decision.event_id,
-                trust_score=decision.trust_score,
-            )
+        reject = write_reject_reason(decision)
+        if reject is not None:
+            persist_quarantine(decision, reject)
+            if reject == "importance_discard":
+                log.info(
+                    "pipeline.event.discarded",
+                    event_id=decision.event_id,
+                    importance_score=decision.importance_score,
+                    reason="importance_below_threshold",
+                )
+            elif reject == "cmvk_disagreement":
+                log.info(
+                    "pipeline.event.quarantined",
+                    event_id=decision.event_id,
+                    importance_score=decision.importance_score,
+                    reason="cmvk_majority_vote_failed",
+                )
+            else:
+                log.info(
+                    "pipeline.event.quarantined",
+                    event_id=decision.event_id,
+                    trust_score=decision.trust_score,
+                    reason=reject,
+                )
             self._processed.add(raw_event.event_id)
             return None
 
