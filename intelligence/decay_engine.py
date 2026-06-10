@@ -33,7 +33,10 @@ def _parse_extracted_at(value: Any) -> datetime | None:
                 return native.replace(tzinfo=UTC)
             return native.astimezone(UTC)
     if isinstance(value, str):
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
     return None
 
 
