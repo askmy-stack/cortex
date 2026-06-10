@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchContradictions } from "../api/client";
+import { fetchContradictions, resolveContradiction } from "../api/client";
 import { isUnauthorizedMessage } from "../lib/auth";
 import { shortId } from "../lib/format";
 import { useApp } from "../context/AppContext";
+import { useToast } from "../components/ui/Toast";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -11,9 +12,13 @@ import type { ContradictionItem } from "../types";
 
 export function ReviewView() {
   const { workspaceId, setView, setSelectedDecisionId, setExploreDecisions } = useApp();
+  const { showToast } = useToast();
   const [items, setItems] = useState<ContradictionItem[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const ws = workspaceId.trim() || "local-dev";
 
   const openInMap = useCallback(
     (decisionId: string) => {
@@ -28,14 +33,35 @@ export function ReviewView() {
     setLoading(true);
     setError(null);
     try {
-      setItems(await fetchContradictions(workspaceId.trim() || "local-dev"));
+      setItems(await fetchContradictions(ws));
     } catch (e) {
       setItems(null);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [workspaceId]);
+  }, [ws]);
+
+  const resolve = useCallback(
+    async (id: string, resolution: "acknowledged" | "dismissed") => {
+      setResolvingId(id);
+      try {
+        await resolveContradiction(id, ws, resolution);
+        setItems((prev) => prev?.filter((c) => c.id !== id) ?? null);
+        showToast(
+          resolution === "acknowledged"
+            ? "Conflict acknowledged — agents may proceed with caution."
+            : "Conflict dismissed from the review queue.",
+        );
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+      } finally {
+        setResolvingId(null);
+      }
+    },
+    [ws, showToast],
+  );
 
   useEffect(() => {
     setItems(null);
@@ -127,7 +153,7 @@ export function ReviewView() {
                         className="btn btn--ghost btn--sm"
                         onClick={() => openInMap(c.new_decision_id!)}
                       >
-                        View new in map
+                        View new
                       </button>
                     ) : null}
                     {c.prior_decision_id ? (
@@ -136,9 +162,25 @@ export function ReviewView() {
                         className="btn btn--ghost btn--sm"
                         onClick={() => openInMap(c.prior_decision_id!)}
                       >
-                        View prior in map
+                        View prior
                       </button>
                     ) : null}
+                    <button
+                      type="button"
+                      className="btn btn--primary btn--sm"
+                      disabled={resolvingId === c.id}
+                      onClick={() => void resolve(c.id, "acknowledged")}
+                    >
+                      {resolvingId === c.id ? "Saving…" : "Acknowledge"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--secondary btn--sm"
+                      disabled={resolvingId === c.id}
+                      onClick={() => void resolve(c.id, "dismissed")}
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 </footer>
               </li>

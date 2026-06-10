@@ -1,7 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { applyTheme, loadTheme } from "./lib/theme";
 import "./index.css";
+
+applyTheme(loadTheme());
 import "./styles/tokens.css";
 import "./styles/premium.css";
 import "./styles/intelligence.css";

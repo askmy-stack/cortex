@@ -11,6 +11,7 @@ import { SkeletonStack } from "./components/ui/Skeleton";
 import { apiBase } from "./api/client";
 import { resolveApiKey } from "./lib/auth";
 import { hasCompletedOnboarding } from "./lib/onboarding";
+import { ThemeToggle } from "./components/ui/ThemeToggle";
 
 const ExploreView = lazy(() =>
   import("./views/ExploreView").then((m) => ({ default: m.ExploreView })),
@@ -61,6 +62,7 @@ function TopbarActions() {
   const secured = Boolean(resolveApiKey(apiKey));
   return (
     <div className="topbar__actions">
+      <ThemeToggle />
       <button
         type="button"
         className="topbar__copilot-btn"

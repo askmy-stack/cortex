@@ -201,6 +201,22 @@ class MemoryService:
             caller_roles=caller_roles,
         )
 
+    async def resolve_contradiction(
+        self,
+        *,
+        contradiction_id: str,
+        workspace_id: str,
+        resolution: str,
+        caller_roles: list[str],
+    ) -> dict[str, str] | None:
+        """Resolve a pending contradiction after human review."""
+        return await self._graph.resolve_contradiction(
+            contradiction_id=contradiction_id,
+            workspace_id=workspace_id,
+            resolution=resolution,
+            caller_roles=caller_roles,
+        )
+
     async def neo4j_health(self) -> str:
         """Return ``'ok'`` when the shared async driver is reachable."""
         return "ok" if await self._graph.health() else "unreachable"
