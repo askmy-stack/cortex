@@ -1,7 +1,7 @@
 import { memo, useId, useState } from "react";
 import type { DecisionResult } from "../../types";
 import { formatRelativeTime, formatSource } from "../../lib/format";
-import { ScoreRing } from "../ui/ScoreRing";
+import { DecisionScores } from "./DecisionScores";
 
 type Props = {
   decision: DecisionResult;
@@ -42,11 +42,11 @@ function DecisionCardInner({ decision: d, defaultOpen, onSelect, selected }: Pro
 
       {open ? (
         <div className="decision-card__body" id={panelId}>
-          <div className="decision-card__scores">
-            <ScoreRing value={d.importance_score} label="Impact" size="sm" />
-            <ScoreRing value={d.trust_score} label="Trust" size="sm" />
-            <ScoreRing value={d.extraction_confidence} label="Clarity" size="sm" />
-          </div>
+          <DecisionScores
+            importance_score={d.importance_score}
+            trust_score={d.trust_score}
+            extraction_confidence={d.extraction_confidence}
+          />
 
           {d.made_by.length > 0 ? (
             <section className="decision-card__section">

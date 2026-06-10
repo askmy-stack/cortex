@@ -692,13 +692,6 @@ a {
   animation: fadeIn 0.25s ease;
 }
 
-.decision-card__scores {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin: 1rem 0;
-}
-
 .decision-card__section h4 {
   margin: 0 0 0.4rem;
   font-size: 0.75rem;
