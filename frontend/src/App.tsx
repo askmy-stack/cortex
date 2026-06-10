@@ -6,6 +6,7 @@ import { HomeView } from "./views/HomeView";
 import { AskView } from "./views/AskView";
 import { SkeletonStack } from "./components/ui/Skeleton";
 import { apiBase } from "./api/client";
+import { resolveApiKey } from "./lib/auth";
 
 // Heavier secondary views are deferred so the initial bundle stays light.
 const ExploreView = lazy(() =>
@@ -52,6 +53,28 @@ function MainContent() {
   );
 }
 
+function TopbarActions() {
+  const { apiKey } = useApp();
+  const secured = Boolean(resolveApiKey(apiKey));
+  return (
+    <div className="topbar__actions">
+      <span
+        className={`topbar__badge ${secured ? "topbar__badge--secured" : ""}`}
+        title={
+          secured
+            ? "API key configured — secured mode"
+            : "Open dev mode — no API key (set in Connection settings)"
+        }
+      >
+        {secured ? "Secured" : "Open"}
+      </span>
+      <a className="topbar__api" href={`${apiBase}/docs`} target="_blank" rel="noreferrer">
+        API docs
+      </a>
+    </div>
+  );
+}
+
 function AppChrome() {
   return (
     <div className="app">
@@ -68,9 +91,7 @@ function AppChrome() {
             <span className="topbar__tag">Organizational memory</span>
           </div>
         </div>
-        <a className="topbar__api" href={`${apiBase}/docs`} target="_blank" rel="noreferrer">
-          API docs
-        </a>
+        <TopbarActions />
       </header>
 
       <div className="app__body">

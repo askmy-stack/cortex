@@ -2,12 +2,15 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import type { AssistantMessage, DecisionResult, QueryResponse, ViewId } from "../types";
 import { WELCOME_MESSAGES, createMessage } from "../lib/assistant";
+import { loadStoredApiKey, persistApiKey } from "../lib/auth";
+import { setClientApiKey } from "../api/client";
 
 type AppContextValue = {
   view: ViewId;
@@ -24,6 +27,9 @@ type AppContextValue = {
   setExploreDecisions: (decisions: DecisionResult[]) => void;
   selectedDecisionId: string | null;
   setSelectedDecisionId: (id: string | null) => void;
+  apiKey: string;
+  setApiKey: (key: string) => void;
+  saveApiKey: () => void;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -40,6 +46,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [lastQuery, setLastQuery] = useState<QueryResponse | null>(null);
   const [exploreDecisions, setExploreDecisions] = useState<DecisionResult[]>([]);
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  const [apiKey, setApiKeyState] = useState(() => loadStoredApiKey());
+
+  const setApiKey = useCallback((key: string) => {
+    setApiKeyState(key);
+    setClientApiKey(key);
+  }, []);
+
+  const saveApiKey = useCallback(() => {
+    persistApiKey(apiKey);
+    setClientApiKey(apiKey);
+  }, [apiKey]);
+
+  useEffect(() => {
+    setClientApiKey(apiKey);
+  }, [apiKey]);
 
   const pushMessage = useCallback((role: AssistantMessage["role"], content: string) => {
     setMessages((prev) => [...prev, createMessage(role, content)]);
@@ -61,6 +82,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setExploreDecisions,
       selectedDecisionId,
       setSelectedDecisionId,
+      apiKey,
+      setApiKey,
+      saveApiKey,
     }),
     [
       view,
@@ -71,6 +95,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       lastQuery,
       exploreDecisions,
       selectedDecisionId,
+      apiKey,
+      setApiKey,
+      saveApiKey,
     ],
   );
 

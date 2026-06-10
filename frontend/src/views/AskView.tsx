@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { queryMemory } from "../api/client";
 import { useApp } from "../context/AppContext";
 import { summarizeQueryResults } from "../lib/assistant";
+import { isUnauthorizedMessage } from "../lib/auth";
 import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -172,6 +173,9 @@ export function AskView() {
       {error ? (
         <StateView tone="error" icon="!" title="Search failed">
           {error}
+          {isUnauthorizedMessage(error) ? (
+            <p className="muted">Open <strong>Connection</strong> above and save your API key.</p>
+          ) : null}
         </StateView>
       ) : null}
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchContradictions } from "../api/client";
+import { isUnauthorizedMessage } from "../lib/auth";
 import { useApp } from "../context/AppContext";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -81,6 +82,9 @@ export function ReviewView() {
             }
           >
             {error}
+            {isUnauthorizedMessage(error) ? (
+              <p className="muted">Open <strong>Connection</strong> above and save your API key.</p>
+            ) : null}
           </StateView>
         ) : null}
 
