@@ -1,0 +1,76 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in Cortex
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Cortex. Include steps to reproduce and what you expected vs what happened.
+        You can also email [kamineniabhinaysai@gmail.com](mailto:kamineniabhinaysai@gmail.com).
+
+  - type: input
+    id: version
+    attributes:
+      label: Cortex version or commit
+      placeholder: e.g. v0.1.0 or commit SHA
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Dashboard / UI
+        - Assist panel
+        - Search / Query API
+        - Memory map / Lineage
+        - Pipeline / Connectors
+        - Neo4j / Graph
+        - Auth / Security
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to Explore → Lineage
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste API errors, browser console output, or links to screenshots.
+    validations:
+      required: false
+
+  - type: input
+    id: workspace
+    attributes:
+      label: Workspace ID (if applicable)
+      placeholder: local-dev
+    validations:
+      required: false
