@@ -43,8 +43,11 @@ export function DecisionScores({ importance_score, trust_score, extraction_confi
       <ul className="decision-scores__grid">
         {metrics.map((m) => (
           <li key={m.key} className="score-metric">
-            <ScoreRing value={m.value} label={m.label} size="sm" />
-            <p className="score-metric__qualifier">{m.hint}</p>
+            <ScoreRing value={m.value} size="sm" />
+            <div className="score-metric__copy">
+              <span className="score-metric__label">{m.label}</span>
+              <span className="score-metric__qualifier">{m.hint}</span>
+            </div>
           </li>
         ))}
       </ul>
