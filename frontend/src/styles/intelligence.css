@@ -1,5 +1,5 @@
 /**
- * Intelligence UI — dashboard, copilot, onboarding, mobile nav, storytelling.
+ * Intelligence UI — dashboard, assist panel, onboarding, mobile nav, storytelling.
  */
 
 /* ── Page header ── */
@@ -392,7 +392,7 @@
 
 /* ── Copilot enhancements ── */
 .assistant-panel {
-  width: var(--copilot-w);
+  width: var(--assist-w);
 }
 
 .assistant-panel__brand {
@@ -413,7 +413,7 @@
   color: var(--text-muted);
 }
 
-.copilot-avatar {
+.assist-avatar {
   width: 28px;
   height: 28px;
   border-radius: 8px;
@@ -456,7 +456,7 @@
   border: 1px solid var(--accent-border);
 }
 
-.copilot-suggestions {
+.assist-suggestions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -464,7 +464,7 @@
   border-top: 1px solid var(--border);
 }
 
-.copilot-suggestion {
+.assist-suggestion {
   padding: 0.4rem 0.75rem;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -476,7 +476,7 @@
   font-family: inherit;
 }
 
-.copilot-suggestion:hover {
+.assist-suggestion:hover {
   border-color: var(--accent-border-hover);
   color: var(--text);
   background: var(--accent-tint);
@@ -487,7 +487,7 @@
   letter-spacing: 0.02em;
 }
 
-.topbar__copilot-btn {
+.topbar__assist-btn {
   display: none;
 }
 
@@ -536,7 +536,7 @@
     color: var(--accent);
   }
 
-  .mobile-nav__item--copilot {
+  .mobile-nav__item--assist {
     color: var(--accent-violet);
   }
 
@@ -557,7 +557,7 @@
     bottom: calc(var(--bottom-nav-h) + var(--space-3));
   }
 
-  .topbar__copilot-btn {
+  .topbar__assist-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;

@@ -40,12 +40,10 @@ export function MemoryGraph({ decisions, focusId, onFocus }: Props) {
   }
 
   return (
-    <div className="memory-graph">
+    <div className="memory-graph" role="group" aria-label="Memory relationship map">
       <svg
         viewBox={`0 0 ${w} ${h}`}
         className="memory-graph__svg"
-        role="img"
-        aria-label="Memory relationship map"
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>

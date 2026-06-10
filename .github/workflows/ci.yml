@@ -43,6 +43,9 @@ jobs:
       - name: Demo seed script (dry-run, no Neo4j)
         run: python scripts/seed_demo.py --dry-run
 
+      - name: Staging smoke script (dry-run)
+        run: python scripts/staging_smoke.py --dry-run
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
