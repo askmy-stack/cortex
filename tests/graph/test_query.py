@@ -123,6 +123,14 @@ def test_causal_chain_query_inlines_depth() -> None:
     assert "$max_depth" not in rendered
 
 
+def test_causal_chain_query_aggregates_trigger_separately() -> None:
+    """Neo4j 5 rejects mixing collect() with bare trigger in the same WITH."""
+    rendered = _causal_chain_query(4)
+    assert "collect(DISTINCT trigger) AS triggers" in rendered
+    assert "[t IN triggers WHERE t IS NOT NULL]" in rendered
+    assert "CASE WHEN trigger IS NULL" not in rendered
+
+
 def test_causal_chain_query_clamps_depth_bounds() -> None:
     """Depth is clamped to ``1..8`` to keep paths bounded."""
     assert "[:SUPERSEDES*1..1]" in _causal_chain_query(0)

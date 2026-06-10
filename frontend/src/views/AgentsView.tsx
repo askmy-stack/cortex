@@ -5,6 +5,7 @@ import { useApp } from "../context/AppContext";
 import { injectSummary } from "../lib/assistant";
 import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
+import { PageHeader } from "../components/ui/PageHeader";
 import { Skeleton } from "../components/ui/Skeleton";
 import { StateView } from "../components/ui/StateView";
 import { useToast } from "../components/ui/Toast";
@@ -83,12 +84,11 @@ export function AgentsView() {
 
   return (
     <article className="view view--agents fade-in">
-      <header className="view__header">
-        <h1>For AI agents</h1>
-        <p className="view__subtitle">
-          Simulate what Cortex injects into Cursor, Claude, or any MCP-connected agent before they act.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="AI-native"
+        title="Context for AI agents"
+        subtitle="Preview what Cortex injects into Cursor, Claude, or any MCP agent — and capture new decisions into memory."
+      />
 
       <WorkspaceBar />
 

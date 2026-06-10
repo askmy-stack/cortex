@@ -5,6 +5,8 @@ import { summarizeQueryResults } from "../lib/assistant";
 import { isUnauthorizedMessage } from "../lib/auth";
 import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
+import { PageHeader } from "../components/ui/PageHeader";
+import { StoryStrip } from "../components/ui/StoryStrip";
 import { Skeleton } from "../components/ui/Skeleton";
 import { StateView } from "../components/ui/StateView";
 
@@ -101,19 +103,19 @@ export function AskView() {
     [results, handleCardSelect],
   );
 
+  const topResult = results[0];
+
   return (
     <article className="view view--ask fade-in">
-      <header className="view__header">
-        <h1>Ask your organization</h1>
-        <p className="view__subtitle">
-          Natural language search over captured decisions — who decided, what systems are
-          affected, and why.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Search memory"
+        title="Ask your organization anything"
+        subtitle="Natural language search over captured decisions — who decided, what systems are affected, and why."
+      />
 
       <WorkspaceBar />
 
-      <section className="ask-form panel">
+      <section className="ask-form panel ask-hero">
         <label className="field-label" htmlFor="ask-input">
           Your question
         </label>
@@ -146,19 +148,22 @@ export function AskView() {
         </div>
 
         <footer className="ask-form__actions">
-          <label className="inline-label">
-            Max results
-            <input
-              type="number"
-              min={1}
-              max={20}
-              className="input input--narrow"
-              value={limit}
-              onChange={(e) =>
-                setLimit(Math.min(20, Math.max(1, Number(e.target.value) || 8)))
-              }
-            />
-          </label>
+          <details className="ask-advanced">
+            <summary className="muted">Advanced options</summary>
+            <label className="inline-label">
+              Max results
+              <input
+                type="number"
+                min={1}
+                max={20}
+                className="input input--narrow"
+                value={limit}
+                onChange={(e) =>
+                  setLimit(Math.min(20, Math.max(1, Number(e.target.value) || 8)))
+                }
+              />
+            </label>
+          </details>
           <button
             type="button"
             className="btn btn--primary"
@@ -189,6 +194,16 @@ export function AskView() {
           <Skeleton variant="card" />
           <Skeleton variant="card" />
         </section>
+      ) : null}
+
+      {lastQuery && topResult ? (
+        <StoryStrip
+          decision={topResult}
+          onExplore={() => {
+            setSelectedDecisionId(topResult.event_id);
+            setView("explore");
+          }}
+        />
       ) : null}
 
       {lastQuery ? (

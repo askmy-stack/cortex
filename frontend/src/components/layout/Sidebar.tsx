@@ -2,11 +2,11 @@ import type { ViewId } from "../../types";
 import { useApp } from "../../context/AppContext";
 
 const NAV: { id: ViewId; label: string; hint: string; icon: string }[] = [
-  { id: "home", label: "Home", hint: "Welcome & status", icon: "⌂" },
-  { id: "ask", label: "Ask", hint: "Search memory", icon: "?" },
-  { id: "explore", label: "Memory map", hint: "Graph & timeline", icon: "◎" },
-  { id: "agents", label: "For agents", hint: "Context injection", icon: "⚡" },
-  { id: "review", label: "Review", hint: "Contradictions", icon: "⚖" },
+  { id: "home", label: "Overview", hint: "Executive summary", icon: "⌂" },
+  { id: "ask", label: "Search", hint: "Ask memory", icon: "?" },
+  { id: "explore", label: "Memory map", hint: "Connections & lineage", icon: "◎" },
+  { id: "agents", label: "AI agents", hint: "Inject & capture", icon: "⚡" },
+  { id: "review", label: "Conflicts", hint: "Human review", icon: "⚖" },
 ];
 
 export function Sidebar() {
@@ -15,7 +15,7 @@ export function Sidebar() {
   return (
     <nav className="sidebar" aria-label="Main navigation">
       <div className="sidebar__brand">
-        <span className="sidebar__brand-label">Memory OS</span>
+        <span className="sidebar__brand-label">Intelligence</span>
         <span className="sidebar__brand-title">Cortex</span>
       </div>
       <ul className="sidebar__list">

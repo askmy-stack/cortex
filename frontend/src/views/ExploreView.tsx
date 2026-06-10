@@ -5,6 +5,7 @@ import { TimelineView } from "../components/memory/TimelineView";
 import { LineageView } from "../components/memory/LineageView";
 import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
+import { PageHeader } from "../components/ui/PageHeader";
 import { StateView } from "../components/ui/StateView";
 import { resolveDecisionFocus } from "../lib/decision";
 
@@ -44,12 +45,11 @@ export function ExploreView() {
 
   return (
     <article className="view view--explore fade-in">
-      <header className="view__header">
-        <h1>Memory map</h1>
-        <p className="view__subtitle">
-          See how decisions, people, and systems connect — plus timeline and lineage views.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Connections"
+        title="Memory map"
+        subtitle="See how decisions, people, and systems connect — timeline and lineage included."
+      />
 
       <WorkspaceBar />
 

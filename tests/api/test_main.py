@@ -100,3 +100,31 @@ def test_contradictions_pending_handles_graph_failure() -> None:
             params={"workspace_id": "ws-1"},
         )
     assert response.status_code == 503
+
+
+def test_contradictions_resolve() -> None:
+    """POST resolve removes item from pending queue via memory service."""
+    client = TestClient(app)
+    with patch(
+        "api.contradictions.memory",
+        return_value=AsyncMock(
+            resolve_contradiction=AsyncMock(
+                return_value={"id": "c1", "status": "acknowledged"},
+            )
+        ),
+    ):
+        response = client.post(
+            "/contradictions/c1/resolve",
+            params={"workspace_id": "ws-1", "resolution": "acknowledged"},
+        )
+    assert response.status_code == 200
+    assert response.json()["status"] == "acknowledged"
+
+
+def test_contradictions_resolve_rejects_invalid_resolution() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/contradictions/c1/resolve",
+        params={"workspace_id": "ws-1", "resolution": "invalid"},
+    )
+    assert response.status_code == 400

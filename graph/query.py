@@ -72,9 +72,13 @@ OPTIONAL MATCH (root)-[:SUPERSEDES*1..{depth}]->(prior:Decision)
   WHERE prior.workspace_id = $workspace_id
 OPTIONAL MATCH (successor:Decision)-[:SUPERSEDES*1..{depth}]->(root)
   WHERE successor.workspace_id = $workspace_id
-OPTIONAL MATCH (trigger:Decision {{id: root.triggered_by, workspace_id: $workspace_id}})
-WITH collect(DISTINCT root) + collect(DISTINCT prior) + collect(DISTINCT successor)
-     + CASE WHEN trigger IS NULL THEN [] ELSE [trigger] END AS all_nodes
+OPTIONAL MATCH (trigger:Decision {{workspace_id: $workspace_id}})
+  WHERE trigger.id = root.triggered_by
+WITH collect(DISTINCT root) AS roots,
+     collect(DISTINCT prior) AS priors,
+     collect(DISTINCT successor) AS successors,
+     collect(DISTINCT trigger) AS triggers
+WITH roots + priors + successors + [t IN triggers WHERE t IS NOT NULL] AS all_nodes
 UNWIND all_nodes AS d
 WITH DISTINCT d
 WHERE d.status <> 'archived'
@@ -129,6 +133,13 @@ RETURN c.id AS id,
        p.id AS prior_id,
        c.status AS status
 ORDER BY c.score DESC
+"""
+
+_RESOLVE_CONTRADICTION = """
+MATCH (c:Contradiction {id: $id, workspace_id: $workspace_id, status: 'pending'})
+SET c.status = $resolution,
+    c.resolved_at = datetime()
+RETURN c.id AS id, c.status AS status
 """
 
 
@@ -327,6 +338,45 @@ class GraphQueryService:
                     }
                 )
         return rows
+
+    async def resolve_contradiction(
+        self,
+        *,
+        contradiction_id: str,
+        workspace_id: str,
+        resolution: str,
+        caller_roles: list[str],
+    ) -> dict[str, Any] | None:
+        """Mark a pending contradiction as reviewed (RBAC-checked)."""
+        driver = await self._driver_instance()
+        async with driver.session() as session:
+            lookup = await session.run(
+                """
+                MATCH (c:Contradiction {id: $id, workspace_id: $workspace_id, status: 'pending'})
+                RETURN c.access_policy AS access_policy
+                """,
+                id=contradiction_id,
+                workspace_id=workspace_id,
+            )
+            record = await lookup.single()
+            if record is None:
+                return None
+            policy = normalize_access_policy(record.get("access_policy"))
+            if not can_access(policy, caller_roles):
+                return None
+            result = await session.run(
+                _RESOLVE_CONTRADICTION,
+                id=contradiction_id,
+                workspace_id=workspace_id,
+                resolution=resolution,
+            )
+            resolved = await result.single()
+            if resolved is None:
+                return None
+            return {
+                "id": str(resolved["id"]),
+                "status": str(resolved["status"]),
+            }
 
     async def health(self) -> bool:
         """Lightweight liveness probe — verifies driver connectivity."""

@@ -101,6 +101,25 @@ export async function rememberMemory(body: {
   return response.json() as Promise<{ status: string; event_id: string; topic: string }>;
 }
 
+export async function resolveContradiction(
+  contradictionId: string,
+  workspaceId: string,
+  resolution: "acknowledged" | "dismissed" = "acknowledged",
+): Promise<{ id: string; status: string }> {
+  const params = new URLSearchParams({
+    workspace_id: workspaceId,
+    resolution,
+  });
+  const response = await apiFetch(
+    `${apiBase}/contradictions/${encodeURIComponent(contradictionId)}/resolve?${params}`,
+    { method: "POST", headers: requestHeaders() },
+  );
+  if (!response.ok) {
+    throw new Error(await parseHttpError(response));
+  }
+  return response.json() as Promise<{ id: string; status: string }>;
+}
+
 export async function fetchContradictions(workspaceId: string): Promise<ContradictionItem[]> {
   const ws = encodeURIComponent(workspaceId);
   const response = await apiFetch(`${apiBase}/contradictions/pending?workspace_id=${ws}`, {

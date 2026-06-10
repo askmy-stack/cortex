@@ -1,0 +1,81 @@
+/**
+ * Cortex design tokens — spacing, type scale, semantic surfaces.
+ * Semantic surface tokens for the dark Cortex UI.
+ */
+
+:root {
+  /* Spacing scale (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Type scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: clamp(1.75rem, 4vw, 2.25rem);
+  --text-4xl: clamp(2rem, 5vw, 2.75rem);
+
+  --copilot-w: min(400px, 100vw);
+  --bottom-nav-h: 64px;
+
+  /* Story / insight accents (dark) */
+  --story-what: #5eead4;
+  --story-why: #a78bfa;
+  --story-who: #7dd3fc;
+  --story-systems: #fbbf24;
+  --story-next: #6ee7b7;
+
+  /* Semantic surface tokens */
+  --on-accent: #06080c;
+  --on-accent-muted: #0a0e14;
+  --overlay-scrim: rgba(3, 5, 9, 0.62);
+  --topbar-bg: rgba(10, 14, 20, 0.88);
+  --surface-elevated: #1a2433;
+  --surface-inset: rgba(6, 8, 12, 0.45);
+  --surface-glass: rgba(18, 26, 38, 0.78);
+  --surface-glass-strong: rgba(14, 20, 30, 0.92);
+  --glow-accent: 0 0 48px rgba(94, 234, 212, 0.14);
+  --glow-violet: 0 0 40px rgba(167, 139, 250, 0.1);
+  --ring-subtle: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --accent-tint: rgba(94, 234, 212, 0.06);
+  --accent-tint-strong: rgba(94, 234, 212, 0.12);
+  --accent-border: rgba(94, 234, 212, 0.28);
+  --accent-border-hover: rgba(94, 234, 212, 0.42);
+  --secured-bg: rgba(110, 231, 183, 0.1);
+  --secured-border: rgba(110, 231, 183, 0.35);
+  --error-surface: rgba(252, 165, 165, 0.08);
+  --error-border: rgba(252, 165, 165, 0.32);
+  --panel-gradient-top: rgba(22, 30, 42, 0.65);
+  --panel-gradient-bottom: rgba(14, 20, 28, 0.45);
+  --sidebar-gradient-top: rgba(10, 14, 20, 0.98);
+  --grid-line: rgba(148, 163, 184, 0.05);
+  --grid-opacity: 0.35;
+  --grain-opacity: 0.04;
+  --graph-decision-fill: rgba(94, 234, 212, 0.14);
+  --graph-person-fill: rgba(167, 139, 250, 0.12);
+  --graph-system-fill: rgba(125, 211, 252, 0.1);
+  --graph-label: #a8b3c2;
+  --skeleton-shine: rgba(148, 163, 184, 0.14);
+  --skeleton-base: rgba(148, 163, 184, 0.08);
+  --code-bg: rgba(17, 24, 32, 0.55);
+  --people-chip-bg: rgba(125, 211, 252, 0.1);
+  --story-pill-bg: rgba(10, 14, 20, 0.55);
+  --onboarding-scrim: rgba(6, 8, 12, 0.78);
+  --mobile-nav-bg: rgba(10, 14, 20, 0.94);
+  --drawer-shadow: -12px 0 48px rgba(0, 0, 0, 0.45);
+  --fab-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --btn-primary-shadow: 0 6px 18px -10px rgba(45, 212, 191, 0.45);
+  --input-focus-halo: rgba(94, 234, 212, 0.18);
+  --topbar-edge: rgba(255, 255, 255, 0.04);
+  --chip-violet-bg: rgba(167, 139, 250, 0.15);
+}

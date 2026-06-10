@@ -12,6 +12,8 @@ log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/contradictions", tags=["intelligence"])
 
+_ALLOWED_RESOLUTIONS = frozenset({"acknowledged", "dismissed"})
+
 
 class ContradictionItem(BaseModel):
     """Single contradiction pending human review."""
@@ -22,6 +24,13 @@ class ContradictionItem(BaseModel):
     new_decision_id: str | None = None
     prior_decision_id: str | None = None
     status: str = "pending"
+
+
+class ContradictionResolveResponse(BaseModel):
+    """Result of marking a contradiction reviewed."""
+
+    id: str
+    status: str
 
 
 @router.get("/pending", response_model=list[ContradictionItem])
@@ -53,3 +62,52 @@ async def list_pending_contradictions(
         count=len(items),
     )
     return items
+
+
+@router.post(
+    "/{contradiction_id}/resolve",
+    response_model=ContradictionResolveResponse,
+    summary="Resolve a pending contradiction",
+)
+async def resolve_contradiction(
+    contradiction_id: str,
+    roles: RolesDep,
+    workspace_id: str = Query(..., description="Cortex workspace identifier"),
+    resolution: str = Query(
+        "acknowledged",
+        description="Review outcome: acknowledged (keep both) or dismissed (no action)",
+    ),
+) -> ContradictionResolveResponse:
+    """Mark a contradiction as reviewed so it leaves the pending queue."""
+    if resolution not in _ALLOWED_RESOLUTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"resolution must be one of: {', '.join(sorted(_ALLOWED_RESOLUTIONS))}",
+        )
+    try:
+        result = await memory().resolve_contradiction(
+            contradiction_id=contradiction_id,
+            workspace_id=workspace_id,
+            resolution=resolution,
+            caller_roles=roles,
+        )
+    except Exception as exc:
+        log.error("contradictions.resolve.failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not resolve contradiction",
+        ) from exc
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Contradiction not found or not accessible",
+        )
+
+    log.info(
+        "contradictions.resolve",
+        contradiction_id=contradiction_id,
+        workspace_id=workspace_id,
+        resolution=resolution,
+    )
+    return ContradictionResolveResponse(**result)
