@@ -194,7 +194,7 @@ export function AssistantPanel() {
       <aside className="assistant-panel" aria-label="Cortex Assist" role="complementary">
         <header className="assistant-panel__head">
           <div className="assistant-panel__brand">
-            <span className="copilot-avatar" aria-hidden>
+            <span className="assist-avatar" aria-hidden>
               C
             </span>
             <div>
@@ -219,7 +219,7 @@ export function AssistantPanel() {
               title={formatTimestamp(m.timestamp)}
             >
               {m.role === "assistant" ? (
-                <span className="copilot-avatar" aria-hidden>
+                <span className="assist-avatar" aria-hidden>
                   C
                 </span>
               ) : null}
@@ -228,7 +228,7 @@ export function AssistantPanel() {
           ))}
           {thinking ? (
             <article className="assistant-msg assistant-msg--assistant">
-              <span className="copilot-avatar" aria-hidden>
+              <span className="assist-avatar" aria-hidden>
                 C
               </span>
               <div className="assistant-msg__bubble">
@@ -238,12 +238,12 @@ export function AssistantPanel() {
           ) : null}
           <div ref={endRef} />
         </div>
-        <div className="copilot-suggestions" role="group" aria-label="Suggested questions">
+        <div className="assist-suggestions" role="group" aria-label="Suggested questions">
           {COPILOT_SUGGESTIONS.map((s) => (
             <button
               key={s}
               type="button"
-              className="copilot-suggestion"
+              className="assist-suggestion"
               onClick={() => submit(s)}
               disabled={thinking}
             >

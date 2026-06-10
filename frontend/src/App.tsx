@@ -64,7 +64,7 @@ function TopbarActions() {
     <div className="topbar__actions">
       <button
         type="button"
-        className="topbar__copilot-btn"
+        className="topbar__assist-btn"
         onClick={() => setAssistantOpen(true)}
         aria-label="Open Cortex Assist"
       >

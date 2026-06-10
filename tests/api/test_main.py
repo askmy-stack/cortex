@@ -22,6 +22,14 @@ def test_health_endpoint() -> None:
     assert payload["dependencies"]["neo4j"] == "ok"
 
 
+def test_metrics_endpoint() -> None:
+    client = TestClient(app)
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert "cortex_http_requests_total" in response.text
+    assert response.headers["content-type"].startswith("text/plain")
+
+
 def test_query_endpoint_uses_memory_service() -> None:
     client = TestClient(app)
     with patch(

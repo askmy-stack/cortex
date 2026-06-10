@@ -31,7 +31,7 @@ export function MobileNav() {
       ))}
       <button
         type="button"
-        className="mobile-nav__item mobile-nav__item--copilot"
+        className="mobile-nav__item mobile-nav__item--assist"
         onClick={() => setAssistantOpen(true)}
         aria-label="Open Cortex Assist"
       >

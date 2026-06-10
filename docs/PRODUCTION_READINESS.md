@@ -8,7 +8,7 @@
 
 ## Executive summary
 
-Cortex is **merge-ready with caveats**. Backend test coverage is strong (279 tests, 82% coverage). Frontend builds cleanly with 6 Vitest tests and Playwright smoke coverage. Demo seed data expanded **5.5×** (2 → 11 base decisions, up to **110** at enterprise scale). Uncommitted UI changes (Assist rename, bug report section, light-mode removal) should be committed before opening the final PR.
+Cortex is **merge-ready with caveats**. Backend test coverage is strong (284 tests, 82% coverage). Frontend builds cleanly with 6 Vitest tests and Playwright smoke coverage. Demo seed data expanded **5.5×** (2 → 11 base decisions, up to **110** at enterprise scale). Uncommitted UI changes (Assist rename, bug report section, light-mode removal) should be committed before opening the final PR.
 
 **Recommendation:** Merge to `main` after one commit bundling pending frontend + validation changes, then run Neo4j-backed smoke in staging.
 
@@ -20,7 +20,7 @@ Cortex is **merge-ready with caveats**. Backend test coverage is strong (279 tes
 
 | Suite | Result | Count |
 |-------|--------|-------|
-| Python `pytest tests/` | ✅ Pass | 279 tests |
+| Python `pytest tests/` | ✅ Pass | 284 tests |
 | Coverage (`fail-under=70`) | ✅ Pass | 82.39% |
 | Frontend `npm test` (Vitest) | ✅ Pass | 6 tests |
 | Frontend `npm run build` | ✅ Pass | TypeScript + Vite |
@@ -110,14 +110,19 @@ curl -X POST localhost:8000/query -H "Content-Type: application/json" \
 - [x] Query benchmark script — `scripts/benchmark_query.py` + `tests/scripts/test_benchmark_query.py`
 - [x] Memory resilience tests — `tests/api/test_memory_resilience.py` (mocked Redis/Neo4j degradation)
 
-**Still open:**
+**Completed (gap-closure pass 2/2, 2026-06-10):**
 
-- Rename internal CSS `copilot-*` classes → `assist-*` (cosmetic)
+- [x] Rename internal CSS `copilot-*` → `assist-*` (tokens, panel, topbar, mobile nav)
+- [x] Load testing — `scripts/load/k6_query.js` (k6 concurrent `/query`)
+- [x] Live staging validation — `scripts/staging_smoke.py` (health + query + optional benchmark)
+- [x] Accessibility — `@axe-core/playwright` audit in `frontend/e2e/a11y.spec.ts`
+- [x] Observability — `GET /metrics` Prometheus endpoint (`api/metrics.py`)
+
+**Still open (post-MVP):**
+
 - Consider `scripts/` → `tools/` consolidation (low priority)
-- **Load testing** — k6/Locust for concurrent `/query` (not blocking MVP)
-- **Live staging validation** — Neo4j + Redis + Kafka stack, enterprise seed, retrieval latency
-- **Accessibility** — automated axe audit (manual landmarks covered in E2E)
-- **Observability** — APM/metrics wiring beyond structlog JSON
+- Run k6 + staging smoke against a live Neo4j/Redis/Kafka deployment in CI (manual staging job)
+- Full APM tracing (OpenTelemetry) beyond Prometheus counters/histograms
 
 ---
 
@@ -158,7 +163,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 
 | Dimension | Rating | Evidence |
 |-----------|--------|----------|
-| Backend API | 🟢 Ready | 279 tests, health endpoint, RBAC at graph layer |
+| Backend API | 🟢 Ready | 284 tests, health + `/metrics`, RBAC at graph layer |
 | Graph / Neo4j | 🟢 Ready | Migrations, writer, query service, lineage fix |
 | Pipeline | 🟡 Staging | Unit + integration mocked; needs live Kafka demo |
 | Frontend | 🟢 Ready | Build passes, responsive CSS, mobile nav |
@@ -195,7 +200,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 
 ## 8. Final merge checklist
 
-- [x] All Python tests pass (279)
+- [x] All Python tests pass (284)
 - [x] Coverage ≥ 70%
 - [x] Frontend build + unit tests pass
 - [x] Demo seed 5×+ expansion with scale presets
@@ -227,7 +232,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 
 ### Test plan
 
-- [x] `pytest tests/` — 279 passed
+- [x] `pytest tests/` — 284 passed
 - [ ] `cd frontend && npm test && npm run build`
 - [ ] `python scripts/seed_demo.py --dry-run --scale enterprise`
 - [ ] `npm run test:e2e` (with API + frontend dev servers)

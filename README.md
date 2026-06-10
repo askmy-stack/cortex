@@ -173,6 +173,7 @@ This brings up Kafka, Neo4j, Redis, Postgres, applies graph migrations, writes t
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/health` | Liveness and dependency checks (Neo4j, Redis) |
+| `GET` | `/metrics` | Prometheus exposition (request + query latency histograms) |
 | `POST` | `/query` | Decision search (Neo4j full-text + optional Qdrant merge when `CORTEX_SEMANTIC_ENABLED=true`) |
 | `POST` | `/inject` | Ranked context for agents |
 | `GET` | `/contradictions/pending` | Pending contradiction review items (`workspace_id` query param; `X-Cortex-Roles` for RBAC) |

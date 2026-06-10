@@ -19,11 +19,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.contradictions import router as contradictions_router
+from api.metrics import record_http_request, record_query, render_metrics
 from api.decisions import router as decisions_router
 from api.deps import RolesDep, memory, set_memory_service
 from api.memory import MemoryService
@@ -97,6 +98,22 @@ app.include_router(decisions_router)
 app.include_router(remember_router)
 
 
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
+    """Record request latency for Prometheus (skip scrape endpoint)."""
+    if request.url.path == "/metrics":
+        return await call_next(request)
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    record_http_request(
+        method=request.method,
+        endpoint=request.url.path,
+        status=response.status_code,
+        duration_s=time.perf_counter() - t0,
+    )
+    return response
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Dependency check helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -159,6 +176,18 @@ async def health() -> HealthResponse:
     )
 
 
+@app.get(
+    "/metrics",
+    summary="Prometheus metrics",
+    tags=["ops"],
+    include_in_schema=False,
+)
+async def metrics() -> Response:
+    """Prometheus exposition format for scrape targets."""
+    payload, content_type = render_metrics()
+    return Response(content=payload, media_type=content_type)
+
+
 @app.post(
     "/query",
     response_model=QueryResponse,
@@ -197,6 +226,7 @@ async def query(
         )
         results = [DecisionResult(**record) for record in records]
     except Exception as exc:
+        record_query(status="error", duration_s=time.time() - t0)
         log.error("query.failed", error=str(exc), query=request.query[:100])
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -204,6 +234,7 @@ async def query(
         ) from exc
 
     latency_ms = round((time.time() - t0) * 1000, 2)
+    record_query(status="ok", duration_s=latency_ms / 1000)
     log.info(
         "query.complete",
         result_count=len(results),

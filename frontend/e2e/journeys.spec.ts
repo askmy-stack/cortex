@@ -25,7 +25,7 @@ test.describe("Critical user journeys", () => {
   test("Assist panel opens and accepts a mocked search", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await page.locator(".mobile-nav__item--copilot").click();
+    await page.locator(".mobile-nav__item--assist").click();
     await expect(page.getByRole("complementary", { name: /cortex assist/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /cortex assist/i })).toBeVisible();
 
