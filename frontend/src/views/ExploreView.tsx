@@ -4,12 +4,19 @@ import { MemoryGraph } from "../components/memory/MemoryGraph";
 import { TimelineView } from "../components/memory/TimelineView";
 import { LineageView } from "../components/memory/LineageView";
 import { DecisionCard } from "../components/memory/DecisionCard";
+import { StateView } from "../components/ui/StateView";
 
 type ExploreTab = "graph" | "timeline" | "lineage";
 
 export function ExploreView() {
-  const { exploreDecisions, selectedDecisionId, setSelectedDecisionId, lastQuery, workspaceId } =
-    useApp();
+  const {
+    exploreDecisions,
+    selectedDecisionId,
+    setSelectedDecisionId,
+    lastQuery,
+    workspaceId,
+    setView,
+  } = useApp();
   const [tab, setTab] = useState<ExploreTab>("graph");
 
   const focusId = selectedDecisionId ?? exploreDecisions[0]?.event_id ?? null;
@@ -25,9 +32,18 @@ export function ExploreView() {
       </header>
 
       {decisions.length === 0 ? (
-        <section className="empty panel">
-          <p>Search on the <strong>Ask</strong> page first to populate the memory map.</p>
-        </section>
+        <StateView
+          icon="◎"
+          title="No memories to map yet"
+          action={
+            <button type="button" className="btn btn--primary" onClick={() => setView("ask")}>
+              Go to Ask →
+            </button>
+          }
+        >
+          Search organizational memory first — results appear here as an interactive graph,
+          timeline, and lineage trace.
+        </StateView>
       ) : (
         <>
           <div className="subtabs" role="tablist" aria-label="Visualization mode">

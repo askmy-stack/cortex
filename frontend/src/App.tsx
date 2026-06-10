@@ -101,7 +101,10 @@ function AppChrome() {
       </div>
 
       <footer className="footer">
-        <p>Cortex · Decisions, not documents · Memory that agents can trust</p>
+        <p>
+          Cortex · <span className="footer__accent">Decisions, not documents</span> · Memory
+          infrastructure for AI-native teams
+        </p>
       </footer>
     </div>
   );

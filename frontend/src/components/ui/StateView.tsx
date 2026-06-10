@@ -12,7 +12,7 @@ type Props = {
 export function StateView({ icon = "◇", title, children, action, tone = "neutral" }: Props) {
   return (
     <section
-      className="state-view"
+      className={`state-view ${tone === "error" ? "state-view--error" : ""}`}
       role={tone === "error" ? "alert" : "status"}
       aria-live={tone === "error" ? "assertive" : "polite"}
     >
