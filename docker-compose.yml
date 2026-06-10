@@ -179,10 +179,11 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/6333'"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
   # ─────────────────────────────────────────────────────────────────────────────
   # REDIS (hot cache — <50ms retrieval for live agents)
@@ -214,7 +215,7 @@ services:
     restart: unless-stopped
     networks: [cortex]
     ports:
-      - "5000:5000"
+      - "5001:5000"
     command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlflow/artifacts
     volumes:
       - mlflow_data:/mlflow
@@ -270,6 +271,43 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # OBSERVABILITY (OpenTelemetry + Jaeger — optional profile)
+  # Start with: docker compose --profile api --profile observability up -d
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: cortex-jaeger
+    restart: unless-stopped
+    networks: [cortex]
+    ports:
+      - "16686:16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    profiles: ["observability"]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    container_name: cortex-otel-collector
+    restart: unless-stopped
+    networks: [cortex]
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./infrastructure/docker/otel-collector.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4318:4318"
+      - "4317:4317"
+    depends_on:
+      jaeger:
+        condition: service_started
+    profiles: ["observability"]
 
   # ─────────────────────────────────────────────────────────────────────────────
   # CORTEX API (FastAPI — Phase 3+)
