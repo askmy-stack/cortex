@@ -123,10 +123,17 @@ curl -X POST localhost:8000/query -H "Content-Type: application/json" \
 - [x] CI staging validation — `.github/workflows/staging-validation.yml` + `scripts/ci_staging_validation.sh`
 - [x] OpenTelemetry tracing — `api/telemetry.py` (OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set)
 
+**Completed (ops stabilization, 2026-06-10):**
+
+- [x] mlflow host port remapped to **5001** (avoids macOS port 5000 conflict)
+- [x] Qdrant healthcheck fixed (TCP probe — image lacks curl)
+- [x] OpenTelemetry collector + Jaeger — `docker compose --profile observability`
+- [x] CI k6 install fixed — `grafana/setup-k6-action@v1`
+
 **Still open:**
 
 - Consider `scripts/` → `tools/` consolidation (low priority)
-- OpenTelemetry collector service in docker-compose (optional local Jaeger/OTel stack)
+- Phase 1 product work — Slack connector, decision extractor, end-to-end Kafka pipeline (see CLAUDE.md)
 
 ---
 
