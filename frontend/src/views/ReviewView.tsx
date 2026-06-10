@@ -4,6 +4,7 @@ import { isUnauthorizedMessage } from "../lib/auth";
 import { shortId } from "../lib/format";
 import { useApp } from "../context/AppContext";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
+import { PageHeader } from "../components/ui/PageHeader";
 import { Skeleton } from "../components/ui/Skeleton";
 import { StateView } from "../components/ui/StateView";
 import type { ContradictionItem } from "../types";
@@ -46,13 +47,11 @@ export function ReviewView() {
 
   return (
     <article className="view view--review fade-in">
-      <header className="view__header">
-        <h1>Review contradictions</h1>
-        <p className="view__subtitle">
-          When new decisions conflict with existing memory, they appear here for human
-          review before agents rely on them.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Governance"
+        title="Review conflicts"
+        subtitle="When new decisions conflict with existing memory, resolve them here before agents act on stale knowledge."
+      />
 
       <WorkspaceBar />
 

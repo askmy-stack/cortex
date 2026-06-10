@@ -11,14 +11,21 @@ export function createMessage(
   return { id: `msg-${messageCounter}`, role, content, timestamp: Date.now() };
 }
 
+export const COPILOT_SUGGESTIONS = [
+  "Why CockroachDB for payments?",
+  "What affects checkout?",
+  "Who owns payments architecture?",
+  "What is Cortex?",
+] as const;
+
 export const WELCOME_MESSAGES: AssistantMessage[] = [
   createMessage(
     "assistant",
-    "Welcome to Cortex — your organization's living memory. I help you find **why** decisions were made, who was involved, and which systems they affect — without digging through Slack threads or old docs.",
+    "Hi — I'm **Cortex Copilot**. I search your organization's decision memory and explain what happened, why, who decided, and what's affected.",
   ),
   createMessage(
     "assistant",
-    "Try asking something like *\"Why did we choose CockroachDB for payments?\"* on the **Ask** page. I'll explain what we find in plain language.",
+    "Ask me anything, or tap a suggestion below. I'll search memory and summarize in plain language — no Slack archaeology required.",
   ),
 ];
 

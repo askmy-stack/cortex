@@ -1,15 +1,17 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { ToastProvider } from "./components/ui/Toast";
 import { Sidebar } from "./components/layout/Sidebar";
+import { MobileNav } from "./components/layout/MobileNav";
 import { AssistantPanel } from "./components/assistant/AssistantPanel";
+import { OnboardingModal } from "./components/onboarding/OnboardingModal";
 import { HomeView } from "./views/HomeView";
 import { AskView } from "./views/AskView";
 import { SkeletonStack } from "./components/ui/Skeleton";
 import { apiBase } from "./api/client";
 import { resolveApiKey } from "./lib/auth";
+import { hasCompletedOnboarding } from "./lib/onboarding";
 
-// Heavier secondary views are deferred so the initial bundle stays light.
 const ExploreView = lazy(() =>
   import("./views/ExploreView").then((m) => ({ default: m.ExploreView })),
 );
@@ -55,10 +57,18 @@ function MainContent() {
 }
 
 function TopbarActions() {
-  const { apiKey } = useApp();
+  const { apiKey, setAssistantOpen } = useApp();
   const secured = Boolean(resolveApiKey(apiKey));
   return (
     <div className="topbar__actions">
+      <button
+        type="button"
+        className="topbar__copilot-btn"
+        onClick={() => setAssistantOpen(true)}
+        aria-label="Open Cortex Copilot"
+      >
+        ✦ Copilot
+      </button>
       <span
         className={`topbar__badge ${secured ? "topbar__badge--secured" : ""}`}
         title={
@@ -70,18 +80,29 @@ function TopbarActions() {
         {secured ? "Secured" : "Open"}
       </span>
       <a className="topbar__api" href={`${apiBase}/docs`} target="_blank" rel="noreferrer">
-        API docs
+        API
       </a>
     </div>
   );
 }
 
 function AppChrome() {
+  const { setAssistantOpen } = useApp();
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => typeof window !== "undefined" && !hasCompletedOnboarding(),
+  );
+
   return (
     <div className="app">
       <a href="#main" className="skip-link">
         Skip to content
       </a>
+      {showOnboarding ? (
+        <OnboardingModal
+          onComplete={() => setShowOnboarding(false)}
+          onOpenCopilot={() => setAssistantOpen(true)}
+        />
+      ) : null}
       <header className="topbar">
         <div className="topbar__brand">
           <span className="topbar__logo" aria-hidden>
@@ -89,7 +110,7 @@ function AppChrome() {
           </span>
           <div>
             <span className="topbar__name">Cortex</span>
-            <span className="topbar__tag">Organizational memory</span>
+            <span className="topbar__tag">Organizational intelligence</span>
           </div>
         </div>
         <TopbarActions />
@@ -101,10 +122,12 @@ function AppChrome() {
         <AssistantPanel />
       </div>
 
+      <MobileNav />
+
       <footer className="footer">
         <p>
-          Cortex · <span className="footer__accent">Decisions, not documents</span> · Memory
-          infrastructure for AI-native teams
+          Cortex · <span className="footer__accent">Decisions, not documents</span> · Memory for
+          AI-native teams
         </p>
       </footer>
     </div>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { queryMemory } from "../../api/client";
 import { useApp } from "../../context/AppContext";
-import { summarizeQueryResults } from "../../lib/assistant";
+import { COPILOT_SUGGESTIONS, summarizeQueryResults } from "../../lib/assistant";
 import { isUnauthorizedMessage } from "../../lib/auth";
 import { TypingIndicator } from "../ui/TypingIndicator";
 
@@ -30,9 +30,18 @@ function formatTimestamp(ms: number): string {
 }
 
 const NAV_PATTERNS = [
-  { test: (q: string) => q.includes("what is cortex") || q.includes("what does cortex"), kind: "about" as const },
-  { test: (q: string) => q.includes("graph") || q.includes("map") || q.includes("explore"), kind: "explore" as const },
-  { test: (q: string) => q === "search" || q === "ask" || q.startsWith("go to ask"), kind: "ask-nav" as const },
+  {
+    test: (q: string) => q.includes("what is cortex") || q.includes("what does cortex"),
+    kind: "about" as const,
+  },
+  {
+    test: (q: string) => q.includes("graph") || q.includes("map") || q.includes("explore"),
+    kind: "explore" as const,
+  },
+  {
+    test: (q: string) => q === "search" || q === "ask" || q.startsWith("go to ask"),
+    kind: "ask-nav" as const,
+  },
 ];
 
 export function AssistantPanel() {
@@ -64,14 +73,20 @@ export function AssistantPanel() {
   }, []);
 
   useEffect(() => {
-    if (!assistantOpen) return;
-    inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setAssistantOpen(false);
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setAssistantOpen(!assistantOpen);
+      }
+      if (e.key === "Escape" && assistantOpen) setAssistantOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [assistantOpen, setAssistantOpen]);
+
+  useEffect(() => {
+    if (assistantOpen) inputRef.current?.focus();
+  }, [assistantOpen]);
 
   const runQuery = useCallback(
     async (q: string) => {
@@ -89,73 +104,70 @@ export function AssistantPanel() {
     [workspaceId, pushMessage, setLastQuery, setExploreDecisions, setSelectedDecisionId, setView],
   );
 
-  const handleAsk = useCallback(() => {
-    const q = draft.trim();
-    if (!q) return;
-    pushMessage("user", q);
-    setDraft("");
-    setThinking(true);
+  const submit = useCallback(
+    (raw: string) => {
+      const q = raw.trim();
+      if (!q || thinking) return;
+      pushMessage("user", q);
+      setDraft("");
+      setThinking(true);
 
-    if (thinkingTimer.current !== undefined) window.clearTimeout(thinkingTimer.current);
+      if (thinkingTimer.current !== undefined) window.clearTimeout(thinkingTimer.current);
 
-    const lower = q.toLowerCase();
-    const nav = NAV_PATTERNS.find((p) => p.test(lower));
+      const lower = q.toLowerCase();
+      const nav = NAV_PATTERNS.find((p) => p.test(lower));
 
-    if (nav?.kind === "about") {
-      thinkingTimer.current = window.setTimeout(() => {
-        pushMessage(
-          "assistant",
-          "Cortex is your **organizational memory** — it captures *decisions* (not documents) from Slack, GitHub, Jira, and more, then makes them searchable for humans and AI agents. Go to **Ask** to query your institutional knowledge.",
-        );
-        setThinking(false);
-      }, 200);
-      return;
-    }
+      if (nav?.kind === "about") {
+        thinkingTimer.current = window.setTimeout(() => {
+          pushMessage(
+            "assistant",
+            "Cortex is your **organizational memory** — it captures *decisions* (not documents) from Slack, GitHub, Jira, and more, then makes them searchable for humans and AI agents.\n\nI can search memory, explain results, and guide you to the memory map.",
+          );
+          setThinking(false);
+        }, 200);
+        return;
+      }
 
-    if (nav?.kind === "explore") {
-      thinkingTimer.current = window.setTimeout(() => {
-        pushMessage(
-          "assistant",
-          "Opening **Memory map** to see relationships between people, systems, and decisions.",
-        );
-        setView("explore");
-        setThinking(false);
-      }, 200);
-      return;
-    }
+      if (nav?.kind === "explore") {
+        thinkingTimer.current = window.setTimeout(() => {
+          pushMessage("assistant", "Opening the **memory map** — relationships between people, systems, and decisions.");
+          setView("explore");
+          setThinking(false);
+        }, 200);
+        return;
+      }
 
-    if (nav?.kind === "ask-nav") {
-      thinkingTimer.current = window.setTimeout(() => {
-        pushMessage(
-          "assistant",
-          "Opening **Ask** — type a question like *Why CockroachDB for payments?* and I'll summarize what we find.",
-        );
-        setView("ask");
-        setThinking(false);
-      }, 200);
-      return;
-    }
+      if (nav?.kind === "ask-nav") {
+        thinkingTimer.current = window.setTimeout(() => {
+          pushMessage("assistant", "Taking you to **Search** — ask anything about past decisions.");
+          setView("ask");
+          setThinking(false);
+        }, 200);
+        return;
+      }
 
-    if (q.length < 3) {
-      thinkingTimer.current = window.setTimeout(() => {
-        pushMessage("assistant", "Please ask at least 3 characters — or try an example on the **Ask** page.");
-        setThinking(false);
-      }, 200);
-      return;
-    }
+      if (q.length < 3) {
+        thinkingTimer.current = window.setTimeout(() => {
+          pushMessage("assistant", "Please use at least 3 characters — or tap a suggestion below.");
+          setThinking(false);
+        }, 200);
+        return;
+      }
 
-    void runQuery(q)
-      .catch((e) => {
-        const msg = e instanceof Error ? e.message : String(e);
-        pushMessage(
-          "assistant",
-          isUnauthorizedMessage(msg)
-            ? `${msg}\n\nOpen **Connection** in any view and save your API key.`
-            : `Search failed: ${msg}`,
-        );
-      })
-      .finally(() => setThinking(false));
-  }, [draft, pushMessage, setView, runQuery]);
+      void runQuery(q)
+        .catch((e) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          pushMessage(
+            "assistant",
+            isUnauthorizedMessage(msg)
+              ? `${msg}\n\nOpen **Connection** settings and save your API key.`
+              : `I couldn't search memory: ${msg}`,
+          );
+        })
+        .finally(() => setThinking(false));
+    },
+    [thinking, pushMessage, setView, runQuery],
+  );
 
   if (!assistantOpen) {
     return (
@@ -163,9 +175,10 @@ export function AssistantPanel() {
         type="button"
         className="assistant-fab"
         onClick={() => setAssistantOpen(true)}
-        aria-label="Open Cortex guide"
+        aria-label="Open Cortex Copilot"
+        title="Cortex Copilot (⌘K)"
       >
-        <span aria-hidden>✦</span> Guide
+        <span aria-hidden>✦</span> Copilot
       </button>
     );
   }
@@ -175,20 +188,25 @@ export function AssistantPanel() {
       <button
         type="button"
         className="assistant-backdrop"
-        aria-label="Close guide"
+        aria-label="Close Copilot"
         onClick={() => setAssistantOpen(false)}
       />
-      <aside className="assistant-panel" aria-label="Cortex guide" role="complementary">
+      <aside className="assistant-panel" aria-label="Cortex Copilot" role="complementary">
         <header className="assistant-panel__head">
-          <div>
-            <h2>Cortex Guide</h2>
-            <p>Ask questions — I'll search organizational memory</p>
+          <div className="assistant-panel__brand">
+            <span className="copilot-avatar" aria-hidden>
+              C
+            </span>
+            <div>
+              <h2>Cortex Copilot</h2>
+              <p>Search memory · explain decisions · guide your next step</p>
+            </div>
           </div>
           <button
             type="button"
             className="btn-icon"
             onClick={() => setAssistantOpen(false)}
-            aria-label="Close guide"
+            aria-label="Close Copilot"
           >
             ×
           </button>
@@ -200,31 +218,54 @@ export function AssistantPanel() {
               className={`assistant-msg assistant-msg--${m.role}`}
               title={formatTimestamp(m.timestamp)}
             >
-              {renderMarkdownLite(m.content)}
+              {m.role === "assistant" ? (
+                <span className="copilot-avatar" aria-hidden>
+                  C
+                </span>
+              ) : null}
+              <div className="assistant-msg__bubble">{renderMarkdownLite(m.content)}</div>
             </article>
           ))}
           {thinking ? (
             <article className="assistant-msg assistant-msg--assistant">
-              <TypingIndicator />
+              <span className="copilot-avatar" aria-hidden>
+                C
+              </span>
+              <div className="assistant-msg__bubble">
+                <TypingIndicator />
+              </div>
             </article>
           ) : null}
           <div ref={endRef} />
+        </div>
+        <div className="copilot-suggestions" role="group" aria-label="Suggested questions">
+          {COPILOT_SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className="copilot-suggestion"
+              onClick={() => submit(s)}
+              disabled={thinking}
+            >
+              {s}
+            </button>
+          ))}
         </div>
         <footer className="assistant-panel__foot">
           <input
             ref={inputRef}
             type="text"
             className="input"
-            placeholder="e.g. Why CockroachDB for payments?"
+            placeholder="Ask about a decision, system, or person…"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-            aria-label="Message to Cortex guide"
+            onKeyDown={(e) => e.key === "Enter" && submit(draft)}
+            aria-label="Message Cortex Copilot"
           />
           <button
             type="button"
             className="btn btn--primary"
-            onClick={handleAsk}
+            onClick={() => submit(draft)}
             disabled={!draft.trim() || thinking}
           >
             Send
