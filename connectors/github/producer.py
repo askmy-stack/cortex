@@ -3,6 +3,8 @@
 Handles:
   - pull_request (opened, merged, closed, review_requested)
   - pull_request_review (submitted — approved, changes_requested)
+  - issue_comment (PR thread comments)
+  - pull_request_review_comment (inline review comments)
   - push (commits to default branch)
   - issues (opened, closed, labeled)
 
@@ -33,7 +35,14 @@ KAFKA_TOPIC = "cortex.raw.github.events"
 SCHEMA_VERSION = "1.0"
 
 _HANDLED_EVENTS = frozenset(
-    {"pull_request", "pull_request_review", "push", "issues"}
+    {
+        "pull_request",
+        "pull_request_review",
+        "pull_request_review_comment",
+        "issue_comment",
+        "push",
+        "issues",
+    }
 )
 
 
@@ -268,9 +277,93 @@ def _normalise_issue(
     )
 
 
+def _normalise_issue_comment(
+    payload: dict[str, Any],
+    workspace_id: str,
+) -> RawEvent | None:
+    """Normalise issue_comment events — PR thread comments only."""
+    action = payload.get("action", "")
+    if action not in {"created", "edited"}:
+        return None
+
+    issue = payload.get("issue", {})
+    if not issue.get("pull_request"):
+        return None
+
+    comment = payload.get("comment", {})
+    body = (comment.get("body") or "").strip()
+    if not body:
+        return None
+
+    repo = payload.get("repository", {})
+    repo_name = repo.get("full_name", "unknown")
+    pr_number = issue.get("number", 0)
+    comment_id = comment.get("id", 0)
+    author = (comment.get("user") or {}).get("login", "unknown")
+
+    return RawEvent(
+        source="github",
+        source_id=f"{repo_name}:pr_comment:{comment_id}",
+        workspace_id=workspace_id,
+        event_type=f"github:issue_comment:{action}",
+        content=f"PR #{pr_number} comment ({action}): {body[:800]}",
+        author=author,
+        channel=repo_name,
+        timestamp=_parse_timestamp(comment.get("updated_at") or comment.get("created_at")),
+        metadata={
+            "pr_number": pr_number,
+            "comment_id": comment_id,
+            "action": action,
+            "repo": repo_name,
+        },
+        schema_version=SCHEMA_VERSION,
+    )
+
+
+def _normalise_pull_request_review_comment(
+    payload: dict[str, Any],
+    workspace_id: str,
+) -> RawEvent | None:
+    """Normalise inline pull_request_review_comment events."""
+    if payload.get("action") != "created":
+        return None
+
+    comment = payload.get("comment", {})
+    body = (comment.get("body") or "").strip()
+    if not body:
+        return None
+
+    pr = payload.get("pull_request", {})
+    repo = payload.get("repository", {})
+    repo_name = repo.get("full_name", "unknown")
+    pr_number = pr.get("number", 0)
+    comment_id = comment.get("id", 0)
+    author = (comment.get("user") or {}).get("login", "unknown")
+
+    return RawEvent(
+        source="github",
+        source_id=f"{repo_name}:review_comment:{comment_id}",
+        workspace_id=workspace_id,
+        event_type="github:pull_request_review_comment:created",
+        content=f"PR #{pr_number} review comment: {body[:800]}",
+        author=author,
+        channel=repo_name,
+        timestamp=_parse_timestamp(comment.get("updated_at") or comment.get("created_at")),
+        metadata={
+            "pr_number": pr_number,
+            "comment_id": comment_id,
+            "path": comment.get("path", ""),
+            "repo": repo_name,
+        },
+        schema_version=SCHEMA_VERSION,
+    )
+
+
 _NORMALISERS = {
     "pull_request": _normalise_pull_request,
     "pull_request_review": _normalise_pull_request_review,
+    "pull_request_review_comment": _normalise_pull_request_review_comment,
+    "issue_comment": _normalise_issue_comment,
     "push": _normalise_push,
     "issues": _normalise_issue,
 }

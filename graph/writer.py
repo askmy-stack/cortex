@@ -110,7 +110,7 @@ MATCH (next:Decision {id: $next_id})
 SET prev.status     = 'superseded',
     prev.invalid_at = $invalid_at
 MERGE (next)-[r:SUPERSEDES]->(prev)
-ON CREATE SET r.valid_at = $valid_at
+ON CREATE SET r.valid_at = $valid_at, r.invalid_at = null
 RETURN r
 """
 
@@ -121,7 +121,7 @@ ON CREATE SET
     r.content       = $content,
     r.access_policy = $access_policy
 MERGE (d)-[rel:HAS_RATIONALE]->(r)
-ON CREATE SET rel.valid_at = $valid_at
+ON CREATE SET rel.valid_at = $valid_at, rel.invalid_at = null
 RETURN r
 """
 
