@@ -115,6 +115,45 @@ Guidelines:
 - Do not hallucinate people, systems, or rationale not present in the message.
 """
 
+_OLLAMA_EXAMPLE_JSON = """{
+  "event_type": "decision",
+  "content": "We decided to migrate payments to CockroachDB for multi-region scale.",
+  "made_by": [],
+  "affects": ["payments"],
+  "rationale": ["Postgres failover gaps blocked EU launch"],
+  "replaces": null,
+  "triggered_by": null,
+  "confidence": 0.9
+}"""
+
+
+def _looks_like_json_schema(payload: dict[str, Any]) -> bool:
+    """Return True when the model echoed a JSON Schema instead of instance data."""
+    return payload.get("type") == "object" and "properties" in payload
+
+
+def _parse_ollama_json(raw: str) -> dict[str, Any] | None:
+    """Parse Ollama JSON output; reject schema echoes and empty objects."""
+    raw = raw.strip()
+    if raw.startswith("```"):
+        lines = raw.split("\n")
+        raw = "\n".join(lines[1:-1]) if len(lines) > 2 else raw
+
+    try:
+        parsed: dict[str, Any] = json.loads(raw)
+    except json.JSONDecodeError:
+        log.warning("ollama.response.invalid_json", raw_response=raw[:200])
+        return None
+
+    if not parsed:
+        return None
+    if _looks_like_json_schema(parsed):
+        log.warning("ollama.response.schema_echo", raw_response=raw[:200])
+        return None
+    if not parsed.get("content"):
+        return None
+    return parsed
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Extraction result cache (content-hash deduplication)
@@ -204,11 +243,13 @@ def _call_ollama(content: str, model: str, base_url: str) -> dict[str, Any] | No
     """
     client = OpenAI(api_key="ollama", base_url=f"{base_url}/v1")
 
-    schema_description = json.dumps(_EXTRACTION_FUNCTION["parameters"], indent=2)
     prompt = (
         f"{_SYSTEM_PROMPT}\n\n"
-        f"Output ONLY valid JSON matching this schema (or empty JSON {{}} if not a decision):\n"
-        f"{schema_description}\n\n"
+        "Output ONLY a JSON object with fields: event_type, content, made_by, affects, "
+        "rationale, replaces, triggered_by, confidence.\n"
+        "Return {} if the message is not a real organizational decision.\n"
+        "Do NOT output JSON Schema. Do NOT describe fields — output values only.\n\n"
+        f"Example output:\n{_OLLAMA_EXAMPLE_JSON}\n\n"
         f"Message:\n{content}"
     )
 
@@ -217,23 +258,11 @@ def _call_ollama(content: str, model: str, base_url: str) -> dict[str, Any] | No
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
         max_tokens=1024,
+        response_format={"type": "json_object"},
     )
 
     raw = response.choices[0].message.content or "{}"
-
-    # Strip markdown code fences if present
-    raw = raw.strip()
-    if raw.startswith("```"):
-        lines = raw.split("\n")
-        raw = "\n".join(lines[1:-1]) if len(lines) > 2 else raw
-
-    try:
-        parsed: dict[str, Any] = json.loads(raw)
-    except json.JSONDecodeError:
-        log.warning("ollama.response.invalid_json", raw_response=raw[:200])
-        return None
-
-    return parsed if parsed.get("content") else None
+    return _parse_ollama_json(raw)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

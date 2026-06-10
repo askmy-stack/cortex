@@ -326,6 +326,14 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       REDIS_HOST: redis
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # Ollama runs on the host; pipeline-worker is in Docker (macOS/Windows).
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      # Live-mount repo so code changes need `make pipeline-restart`, not image rebuild.
+      PYTHONPATH: /app
+    volumes:
+      - ./:/app
     depends_on:
       kafka:
         condition: service_healthy
@@ -347,6 +355,7 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       REDIS_HOST: redis
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      PYTHONPATH: /app
     depends_on:
       neo4j:
         condition: service_healthy

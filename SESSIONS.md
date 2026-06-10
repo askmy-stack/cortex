@@ -370,3 +370,27 @@
 
 [OWNER NOTES]
 - Pick up Phase 1 from this branch; no commit yet — owner decides message/PR scope.
+
+---
+
+## Session — 2026-06-10 (cont.) — Live Slack E2E + dev workflow
+**Duration:** ~1h
+**Phase:** Phase 1 — Kafka + Slack connector + decision extractor
+
+### Built
+- **Docker dev workflow:** `pipeline-worker` + `api` volume-mount `./:/app` with `PYTHONPATH=/app` — code changes need `make pipeline-restart` (~3s), not image rebuild (~8min)
+- **Ollama extraction fix:** example-based JSON prompt + `response_format=json_object`; reject schema-echo responses
+- **Compose env:** `OLLAMA_BASE_URL=host.docker.internal`, Timescale service DNS for worker
+- **`scripts/verify_slack_pipeline.py`** + **`make verify-pipeline`** — live inject → Neo4j Decision count check
+- **`scripts/run_pipeline_worker_local.sh`** + **`make pipeline-local`** — host-native worker for fastest iteration
+- **Makefile:** `stack`, `pipeline-restart`, `pipeline-local`, `verify-pipeline`
+
+### State at end
+- **`make verify-pipeline` PASS** — 11 → 12 Decision nodes in ~26s (Ollama llama3.1:8b)
+- **295** pytest passing (approx., re-run before merge)
+- Branch **`feature/phase-1-live-e2e`** ready for PR
+
+### Next session starts with
+1. Merge live E2E PR; configure real Slack app webhook
+2. Optional: slim pipeline-worker Docker image (worker-only deps)
+3. Demo recording per `docs/DEMO_RECORDING.md`
