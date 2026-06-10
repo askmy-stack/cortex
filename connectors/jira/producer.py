@@ -15,6 +15,8 @@ Decision: D-001 — Kafka as single event bus.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 from datetime import UTC, datetime
 from typing import Any
@@ -29,6 +31,31 @@ log = structlog.get_logger(__name__)
 
 KAFKA_TOPIC = "cortex.raw.jira.events"
 SCHEMA_VERSION = "1.0"
+
+
+def verify_jira_signature(
+    payload_bytes: bytes,
+    signature_header: str,
+    secret: str,
+) -> bool:
+    """Verify a Jira webhook HMAC-SHA256 signature (X-Hub-Signature header).
+
+    Args:
+        payload_bytes: Raw request body bytes.
+        signature_header: Value of the X-Hub-Signature header (``sha256=...``).
+        secret: Configured Jira webhook secret.
+
+    Returns:
+        True if the signature is valid, False otherwise.
+    """
+    if not signature_header.startswith("sha256="):
+        return False
+    expected = "sha256=" + hmac.new(
+        secret.encode(),
+        payload_bytes,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
 
 _HANDLED_EVENTS = frozenset(
     {
@@ -429,22 +456,43 @@ class JiraConnector:
         self,
         workspace_id: str | None = None,
         bootstrap_servers: str | None = None,
+        webhook_secret: str | None = None,
     ) -> None:
         self.workspace_id = workspace_id or os.environ.get(
             "CORTEX_WORKSPACE_ID", "local-dev"
         )
+        self._webhook_secret = webhook_secret or os.environ.get(
+            "JIRA_WEBHOOK_SECRET",
+            "",
+        )
         self._producer = JiraKafkaProducer(bootstrap_servers=bootstrap_servers)
         log.info("jira.connector.initialized", workspace_id=self.workspace_id)
 
-    def handle_event(self, payload: dict[str, Any]) -> dict[str, str]:
+    def handle_event(
+        self,
+        payload: dict[str, Any],
+        signature: str | None = None,
+        raw_body: bytes | None = None,
+    ) -> dict[str, str]:
         """Process an incoming Jira webhook payload.
 
         Args:
             payload: Parsed Jira webhook JSON body.
+            signature: X-Hub-Signature header value (optional, for verification).
+            raw_body: Raw request body bytes for signature verification.
 
         Returns:
             {"status": "ok", "event_id": ...} | {"status": "skipped", ...}
         """
+        # When a secret is configured, verification is mandatory.
+        if self._webhook_secret and not (
+            signature
+            and raw_body
+            and verify_jira_signature(raw_body, signature, self._webhook_secret)
+        ):
+            log.warning("jira.webhook.signature_invalid")
+            return {"status": "error", "reason": "invalid_signature"}
+
         event_name = payload.get("webhookEvent", "")
 
         raw_event = normalise_jira_event(payload, event_name, self.workspace_id)

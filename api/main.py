@@ -73,10 +73,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Browsers reject `Access-Control-Allow-Origin: *` together with credentials.
+# Only enable credentials when an explicit origin allowlist is configured.
+_cors_origins_raw = os.environ.get("CORS_ORIGINS", "").strip()
+if _cors_origins_raw:
+    _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+    _cors_allow_credentials = True
+else:
+    _cors_origins = ["*"]
+    _cors_allow_credentials = False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_allow_credentials,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
