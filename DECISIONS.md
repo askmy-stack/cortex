@@ -23,6 +23,15 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ## ACTIVE INSTRUCTIONS
 
+### 2026-06-10 — Phase 2: GitHub + Jira connector E2E
+Priority: HIGH
+Status: IN PROGRESS — inject scripts + live verify done; real webhooks pending
+Detail:
+- GitHub/Jira inject + verify scripts (mirror Slack Phase 1)
+- Kafka topic bootstrap on cold start
+- Live E2E: github + jira → extract → Neo4j
+- Remaining: public webhook URLs, graph schema cross-source validation
+
 ### 2026-05-11 — Build Phase 1: Core infrastructure + Slack connector
 Priority: HIGH
 Status: DONE — Session 1 (2026-05-11)

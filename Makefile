@@ -1,4 +1,4 @@
-.PHONY: demo demo-dry-run test ci stack pipeline-restart pipeline-local verify-pipeline
+.PHONY: demo demo-dry-run test ci stack init-kafka pipeline-restart pipeline-local verify-pipeline verify-github verify-jira verify-connectors
 
 # Local portfolio demo: Docker infra + migrations + seed + API + worker + frontend.
 demo:
@@ -19,6 +19,10 @@ ci: test
 stack:
 	docker compose --profile api up -d
 
+# Pre-create Kafka topics (eliminates worker UNKNOWN_TOPIC errors on cold start).
+init-kafka:
+	python scripts/init_kafka_topics.py
+
 # Fast worker reload after Python changes (volume-mounted code; no image rebuild).
 pipeline-restart:
 	docker compose --profile api restart pipeline-worker
@@ -27,6 +31,14 @@ pipeline-restart:
 pipeline-local:
 	bash scripts/run_pipeline_worker_local.sh
 
-# End-to-end: inject Slack message → Ollama extract → Neo4j Decision node.
+# End-to-end: inject → Ollama extract → Neo4j Decision node.
 verify-pipeline:
-	python scripts/verify_slack_pipeline.py --timeout 120
+	python scripts/verify_slack_pipeline.py --source slack --timeout 120
+
+verify-github:
+	python scripts/verify_slack_pipeline.py --source github --timeout 120
+
+verify-jira:
+	python scripts/verify_slack_pipeline.py --source jira --timeout 120
+
+verify-connectors: verify-pipeline verify-github verify-jira

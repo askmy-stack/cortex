@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Verify the Slack → Kafka → extract → Neo4j pipeline end-to-end.
+"""Verify connector → Kafka → extract → Neo4j pipeline end-to-end.
+
+Supports slack, github, and jira sources. Default source is slack for backward
+compatibility with ``make verify-pipeline``.
 
 Prerequisites:
-  - `make stack` or `docker compose --profile api up -d`
+  - `make stack` and `make init-kafka`
   - Ollama running on the host with the configured model pulled
   - After code changes: `make pipeline-restart` (seconds) — not `docker compose build`
 
 Usage:
-  python scripts/verify_slack_pipeline.py --dry-run
-  python scripts/verify_slack_pipeline.py
-  python scripts/verify_slack_pipeline.py --timeout 180
+  python scripts/verify_slack_pipeline.py --source slack
+  python scripts/verify_slack_pipeline.py --source github
+  python scripts/verify_slack_pipeline.py --source jira --dry-run
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
@@ -31,7 +35,50 @@ if str(_REPO) not in sys.path:
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 
-_INJECT = _REPO / "scripts" / "inject_slack_message.py"
+DecisionTextBuilder = Callable[[str, str], str]
+
+
+def _slack_text(marker: str, _workspace: str) -> str:
+    return (
+        f"We decided to adopt event sourcing for billing ({marker}) "
+        "because audit requirements blocked the monolith release."
+    )
+
+
+def _github_body(marker: str, _workspace: str) -> str:
+    return (
+        f"We decided to adopt event sourcing for billing ({marker}) "
+        "because audit requirements blocked the monolith release."
+    )
+
+
+def _jira_comment(marker: str, _workspace: str) -> str:
+    return (
+        f"We decided to adopt event sourcing for billing ({marker}) "
+        "because audit requirements blocked the monolith release."
+    )
+
+
+SOURCE_CONFIG: dict[str, dict[str, object]] = {
+    "slack": {
+        "script": "inject_slack_message.py",
+        "label": "Slack message",
+        "text_builder": _slack_text,
+        "extra_args": lambda text, workspace: ["--text", text, "--workspace", workspace],
+    },
+    "github": {
+        "script": "inject_github_event.py",
+        "label": "GitHub PR",
+        "text_builder": _github_body,
+        "extra_args": lambda text, workspace: ["--body", text, "--workspace", workspace],
+    },
+    "jira": {
+        "script": "inject_jira_event.py",
+        "label": "Jira comment",
+        "text_builder": _jira_comment,
+        "extra_args": lambda text, workspace: ["--comment", text, "--workspace", workspace],
+    },
+}
 
 
 def _fetch_json(url: str) -> dict:
@@ -50,7 +97,6 @@ def check_ollama(*, base_url: str, model: str) -> tuple[bool, str]:
     if model in names:
         return True, f"Ollama model {model!r} available"
 
-    # Allow unpinned tags, e.g. llama3.1:8b vs llama3.1:8b-instruct
     prefix = model.split(":")[0] + ":"
     matches = sorted(n for n in names if n.startswith(prefix))
     if matches:
@@ -79,22 +125,25 @@ def count_decisions(
             return int(record["c"]) if record else 0
 
 
-def inject_message(*, text: str, workspace: str) -> subprocess.CompletedProcess[str]:
-    """Publish a synthetic Slack message via inject_slack_message.py."""
-    cmd = [
-        sys.executable,
-        str(_INJECT),
-        "--text",
-        text,
-        "--workspace",
-        workspace,
-    ]
+def inject_event(*, source: str, text: str, workspace: str) -> subprocess.CompletedProcess[str]:
+    """Publish a synthetic connector event via the matching inject script."""
+    config = SOURCE_CONFIG[source]
+    script = _REPO / "scripts" / str(config["script"])
+    extra_args_fn = config["extra_args"]
+    assert callable(extra_args_fn)
+    cmd = [sys.executable, str(script), *extra_args_fn(text, workspace)]
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Verify Slack pipeline: inject → extract → Neo4j",
+        description="Verify connector pipeline: inject → extract → Neo4j",
+    )
+    parser.add_argument(
+        "--source",
+        choices=sorted(SOURCE_CONFIG),
+        default="slack",
+        help="Connector source to verify (default: slack)",
     )
     parser.add_argument("--workspace", default=None, help="Cortex workspace id")
     parser.add_argument(
@@ -124,6 +173,9 @@ def main() -> int:
     neo4j_user = os.environ.get("NEO4J_USER", "neo4j")
     neo4j_password = os.environ.get("NEO4J_PASSWORD", "cortex_local")
 
+    config = SOURCE_CONFIG[args.source]
+    label = str(config["label"])
+
     ok, msg = check_ollama(base_url=ollama_url, model=ollama_model)
     print(f"{'PASS' if ok else 'FAIL'}: {msg}")
     if not ok:
@@ -143,19 +195,18 @@ def main() -> int:
     print(f"Neo4j Decision count (workspace={workspace!r}): {before}")
 
     if args.dry_run:
-        print("Dry run — skipping inject and poll")
+        print(f"Dry run — skipping {args.source} inject and poll")
         return 0
 
-    marker = f"verify-pipeline-{int(time.time())}"
-    text = (
-        f"We decided to adopt event sourcing for billing ({marker}) "
-        "because audit requirements blocked the monolith release."
-    )
-    print(f"Injecting Slack message (marker={marker!r})...")
-    result = inject_message(text=text, workspace=workspace)
+    marker = f"verify-{args.source}-{int(time.time())}"
+    text_builder = config["text_builder"]
+    assert callable(text_builder)
+    text = text_builder(marker, workspace)
+    print(f"Injecting {label} (source={args.source!r}, marker={marker!r})...")
+    result = inject_event(source=args.source, text=text, workspace=workspace)
     if result.returncode != 0:
         print(result.stderr or result.stdout, file=sys.stderr)
-        print("FAIL: inject_slack_message.py exited non-zero")
+        print(f"FAIL: {config['script']} exited non-zero")
         return 1
     print(result.stdout.strip())
 
@@ -174,7 +225,7 @@ def main() -> int:
             continue
 
         if after > before:
-            print(f"PASS: Decision count increased {before} → {after}")
+            print(f"PASS: {args.source} pipeline — Decision count {before} → {after}")
             return 0
 
         time.sleep(args.poll_interval)

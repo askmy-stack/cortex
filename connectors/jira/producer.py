@@ -500,6 +500,7 @@ class JiraConnector:
             return {"status": "skipped", "reason": "not_processable"}
 
         self._producer.publish(raw_event)
+        self._producer.flush(timeout=5.0)
         return {"status": "ok", "event_id": raw_event.event_id}
 
     def close(self) -> None:
