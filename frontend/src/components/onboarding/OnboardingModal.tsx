@@ -18,8 +18,8 @@ const STEPS = [
     icon: "?",
   },
   {
-    title: "Meet your Copilot",
-    body: "The Cortex Copilot guides you, runs searches, and explains results. Use the memory map to see how people, systems, and decisions connect over time.",
+    title: "Meet Assist",
+    body: "Cortex Assist guides you, runs searches, and explains results. Use the memory map to see how people, systems, and decisions connect over time.",
     icon: "✦",
   },
 ] as const;
@@ -62,7 +62,7 @@ export function OnboardingModal({ onComplete, onOpenCopilot }: Props) {
           )}
           {isLast ? (
             <button type="button" className="btn btn--primary" onClick={finish}>
-              Open Copilot
+              Open Assist
             </button>
           ) : (
             <button type="button" className="btn btn--primary" onClick={() => setStep((s) => s + 1)}>

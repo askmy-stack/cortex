@@ -21,7 +21,7 @@ export const COPILOT_SUGGESTIONS = [
 export const WELCOME_MESSAGES: AssistantMessage[] = [
   createMessage(
     "assistant",
-    "Hi — I'm **Cortex Copilot**. I search your organization's decision memory and explain what happened, why, who decided, and what's affected.",
+    "Hi — I'm **Cortex Assist**. I search your organization's decision memory and explain what happened, why, who decided, and what's affected.",
   ),
   createMessage(
     "assistant",

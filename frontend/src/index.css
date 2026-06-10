@@ -52,7 +52,7 @@
 }
 .input:focus-visible,
 .textarea:focus-visible {
-  box-shadow: 0 0 0 2px var(--bg-deep), 0 0 0 4px var(--accent), 0 0 0 5px rgba(94, 234, 212, 0.18);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent), 0 0 0 5px var(--input-focus-halo);
 }
 
 *,
@@ -84,7 +84,7 @@ a {
   z-index: 9999;
   padding: 0.5rem 1rem;
   background: var(--accent);
-  color: var(--bg-deep);
+  color: var(--on-accent);
   font-weight: 600;
   border-radius: var(--radius);
 }
@@ -106,7 +106,7 @@ a {
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(10, 14, 20, 0.85);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
@@ -123,11 +123,11 @@ a {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent-dim), #0d9488);
+  background: linear-gradient(135deg, var(--accent-dim), var(--accent));
   display: grid;
   place-items: center;
   font-size: 1.1rem;
-  color: var(--bg-deep);
+  color: var(--on-accent);
 }
 
 .topbar__name {
@@ -163,8 +163,8 @@ a {
 
 .topbar__badge--secured {
   color: var(--ok);
-  border-color: rgba(110, 231, 183, 0.35);
-  background: rgba(110, 231, 183, 0.08);
+  border-color: var(--secured-border);
+  background: var(--secured-bg);
 }
 
 .topbar__api {
@@ -316,7 +316,7 @@ a {
 
 .assistant-msg--user {
   background: var(--accent-glow);
-  border: 1px solid rgba(94, 234, 212, 0.25);
+  border: 1px solid var(--accent-border);
   align-self: flex-end;
   max-width: 92%;
 }
@@ -340,11 +340,11 @@ a {
   padding: 0.75rem 1.1rem;
   border-radius: 999px;
   border: none;
-  background: linear-gradient(135deg, var(--accent-dim), #0d9488);
-  color: var(--bg-deep);
+  background: linear-gradient(135deg, var(--accent-dim), var(--accent));
+  color: var(--on-accent);
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: var(--fab-shadow, var(--shadow));
   transition: transform 0.2s;
 }
 .assistant-fab:hover {
@@ -358,7 +358,7 @@ a {
   inset: 0;
   z-index: 250;
   border: none;
-  background: rgba(3, 5, 9, 0.6);
+  background: var(--overlay-scrim);
   backdrop-filter: blur(2px);
   cursor: pointer;
   animation: fadeIn var(--motion) var(--ease);
@@ -563,9 +563,9 @@ a {
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, var(--accent-dim), #0d9488);
-  color: var(--bg-deep);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 6px 18px -10px rgba(45, 212, 191, 0.45);
+  background: linear-gradient(135deg, var(--accent-dim), var(--accent));
+  color: var(--on-accent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, var(--btn-primary-shadow);
 }
 
 .btn--primary:hover:not(:disabled) {
@@ -747,7 +747,7 @@ a {
 }
 
 .badge--source {
-  background: rgba(167, 139, 250, 0.15);
+  background: var(--chip-violet-bg);
   color: var(--accent-violet);
 }
 
@@ -857,18 +857,18 @@ a {
 }
 
 .memory-graph__node--decision .memory-graph__circle {
-  fill: rgba(94, 234, 212, 0.12);
+  fill: var(--graph-decision-fill);
   stroke: var(--accent);
 }
 
 .memory-graph__node--person .memory-graph__circle {
-  fill: rgba(167, 139, 250, 0.1);
+  fill: var(--graph-person-fill);
   stroke: var(--accent-violet);
 }
 
 .memory-graph__node--system .memory-graph__circle {
-  fill: rgba(125, 211, 252, 0.08);
-  stroke: #7dd3fc;
+  fill: var(--graph-system-fill);
+  stroke: var(--story-who);
 }
 
 .memory-graph__node--focus .memory-graph__circle {
@@ -906,7 +906,7 @@ a {
   background: var(--accent-violet);
 }
 .dot--system {
-  background: #7dd3fc;
+  background: var(--story-who);
 }
 
 .graph-empty,
@@ -1074,8 +1074,8 @@ a {
 }
 
 .alert--error {
-  background: rgba(252, 165, 165, 0.1);
-  border: 1px solid rgba(252, 165, 165, 0.3);
+  background: var(--error-surface);
+  border: 1px solid var(--error-border);
   color: var(--danger);
 }
 
@@ -1223,7 +1223,7 @@ a {
 
 .panel--capture {
   margin-top: 1.25rem;
-  border-color: rgba(94, 234, 212, 0.15);
+  border-color: var(--accent-border);
 }
 
 .capture-success {
@@ -1252,7 +1252,7 @@ code {
   font-size: 0.85em;
   padding: 0.1em 0.35em;
   border-radius: 4px;
-  background: var(--bg-raised);
+  background: var(--code-bg);
 }
 
 @keyframes fadeIn {
@@ -1282,9 +1282,9 @@ code {
   background:
     linear-gradient(
       90deg,
-      rgba(148, 163, 184, 0.06) 0%,
-      rgba(148, 163, 184, 0.16) 50%,
-      rgba(148, 163, 184, 0.06) 100%
+      var(--skeleton-base) 0%,
+      var(--skeleton-shine) 50%,
+      var(--skeleton-base) 100%
     );
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
@@ -1307,7 +1307,7 @@ code {
   color: var(--text-muted);
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius);
-  background: rgba(17, 24, 32, 0.4);
+  background: var(--surface-inset);
 }
 
 .state-view__icon {
@@ -1390,7 +1390,7 @@ code {
     max-height: 100vh;
     z-index: 300;
     border-left: 1px solid var(--border-strong);
-    box-shadow: -12px 0 48px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--drawer-shadow);
     animation: slideInRight var(--motion-slow) var(--ease);
   }
   .assistant-backdrop {
@@ -1449,7 +1449,7 @@ code {
     padding: 0.35rem 0.5rem;
     position: sticky;
     top: 52px;
-    background: rgba(10, 14, 20, 0.92);
+    background: var(--mobile-nav-bg);
     backdrop-filter: blur(10px);
     z-index: 50;
   }
@@ -1522,7 +1522,7 @@ code {
   }
   .skeleton {
     animation: none;
-    background: rgba(148, 163, 184, 0.1);
+    background: var(--skeleton-shine);
   }
   .typing-indicator span {
     animation: none;

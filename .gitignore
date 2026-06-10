@@ -69,3 +69,23 @@ secrets/
 .DS_Store
 Thumbs.db
 *.bak
+
+# Playwright / frontend test artifacts
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+.playwright/
+
+# Frontend build output (root dist/ already ignored)
+frontend/dist/
+
+# Cursor / local IDE
+.cursor/
+*.local.md
+
+# Local runtime / logs
+logs/
+*.log.*
+tmp/
+temp/
+.cache/

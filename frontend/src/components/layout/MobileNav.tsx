@@ -33,12 +33,12 @@ export function MobileNav() {
         type="button"
         className="mobile-nav__item mobile-nav__item--copilot"
         onClick={() => setAssistantOpen(true)}
-        aria-label="Open Cortex Copilot"
+        aria-label="Open Cortex Assist"
       >
         <span className="mobile-nav__icon" aria-hidden>
           ✦
         </span>
-        <span className="mobile-nav__label">Copilot</span>
+        <span className="mobile-nav__label">Assist</span>
       </button>
     </nav>
   );

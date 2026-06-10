@@ -5,6 +5,11 @@ Run after `python -m graph.migrate` (or use scripts/demo.sh).
 
 Uses GraphWriter so Decision nodes match the production schema (RBAC, edges, full-text).
 Idempotent: fixed event IDs — safe to re-run.
+
+Scale presets (``--scale``):
+  small / startup — 11 base decisions
+  mid             — 55 decisions (5×)
+  enterprise      — 110 decisions (10×)
 """
 
 from __future__ import annotations
@@ -13,94 +18,32 @@ import argparse
 import json
 import os
 import sys
-import uuid
-from datetime import UTC, datetime
 from pathlib import Path
 
 try:
     from dotenv import load_dotenv
 except ImportError:
+
     def load_dotenv(_path: Path | None = None) -> bool:
         return False
 
-# Repo root on sys.path for `python scripts/seed_demo.py`
 _REPO = Path(__file__).resolve().parents[1]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
-from shared.models import DecisionEvent, Provenance
+from scripts.demo_catalog import (
+    OrgScale,
+    SCALE_MULTIPLIERS,
+    build_demo_decisions,
+    build_primary_decision,
+    build_secondary_decision,
+    demo_uuid,
+)
 
-
-def _demo_uuid(name: str) -> str:
-    """Deterministic UUID for idempotent MERGE."""
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"cortex.demo:{name}"))
-
-
-def _build_primary_decision(workspace_id: str) -> DecisionEvent:
-    now = datetime.now(UTC)
-    raw_id = _demo_uuid("raw-cockroach")
-    return DecisionEvent(
-        event_id=_demo_uuid("decision-cockroach"),
-        source_raw_event_id=raw_id,
-        workspace_id=workspace_id,
-        event_type="decision",
-        content=(
-            "We decided to migrate the payments service from PostgreSQL to CockroachDB "
-            "for multi-region active-active replication and predictable scale past 10M txn/day."
-        ),
-        made_by=["priya@acme.example", "dan@acme.example"],
-        affects=["payments-service", "billing-service"],
-        rationale=[
-            "Incident #247 showed Postgres failover gaps in eu-west.",
-            "Finance signed off on incremental infra cost for HA.",
-        ],
-        triggered_by="incident-247",
-        extraction_confidence=0.92,
-        importance_score=0.88,
-        trust_score=0.82,
-        provenance=Provenance(
-            source="slack",
-            channel="C-architecture",
-            original_timestamp=now,
-            extractor_version="demo-seed",
-            extractor_model="seed-script",
-            verified_by=[],
-            raw_event_id=raw_id,
-        ),
-        extracted_at=now,
-    )
-
-
-def _build_secondary_decision(workspace_id: str) -> DecisionEvent:
-    """Optional second decision (related context, same workspace)."""
-    now = datetime.now(UTC)
-    raw_id = _demo_uuid("raw-cache")
-    return DecisionEvent(
-        event_id=_demo_uuid("decision-cache"),
-        source_raw_event_id=raw_id,
-        workspace_id=workspace_id,
-        event_type="decision",
-        content=(
-            "We standardized on Redis Cluster for hot payment session state with TTL-based "
-            "eviction; Postgres remains system of record for balances."
-        ),
-        made_by=["ops@acme.example"],
-        affects=["payments-service"],
-        rationale=["Sub-10ms p99 for session reads during checkout."],
-        extraction_confidence=0.88,
-        importance_score=0.72,
-        trust_score=0.78,
-        provenance=Provenance(
-            source="github",
-            channel="acme/payments-platform",
-            original_timestamp=now,
-            extractor_version="demo-seed",
-            extractor_model="seed-script",
-            verified_by=[],
-            raw_event_id=raw_id,
-        ),
-        extracted_at=now,
-    )
+# Re-export for tests that import from seed_demo.
+_demo_uuid = demo_uuid
+_build_primary_decision = build_primary_decision
+_build_secondary_decision = build_secondary_decision
 
 
 def main() -> int:
@@ -111,6 +54,12 @@ def main() -> int:
         help="Workspace id stored on Decision nodes (default: env CORTEX_WORKSPACE_ID or local-dev)",
     )
     parser.add_argument(
+        "--scale",
+        choices=list(SCALE_MULTIPLIERS.keys()),
+        default="small",
+        help="Org size preset — multiplies base catalog for stress testing",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned writes and exit without connecting to Neo4j",
@@ -118,27 +67,29 @@ def main() -> int:
     args = parser.parse_args()
 
     load_dotenv(_REPO / ".env")
-
-    primary = _build_primary_decision(args.workspace)
-    secondary = _build_secondary_decision(args.workspace)
+    scale: OrgScale = args.scale  # type: ignore[assignment]
+    decisions = build_demo_decisions(args.workspace, scale=scale)
 
     if args.dry_run:
-        print("Dry run — would write:")
-        print(f"  - {primary.event_id}: {primary.content[:80]}...")
-        print(f"  - {secondary.event_id}: {secondary.content[:80]}...")
+        print(f"Dry run — would write {len(decisions)} decisions (scale={scale}):")
+        for d in decisions[:5]:
+            print(f"  - {d.event_id}: {d.content[:72]}...")
+        if len(decisions) > 5:
+            print(f"  ... and {len(decisions) - 5} more")
         return 0
 
     from graph.writer import GraphWriter
 
     writer = GraphWriter()
+    written: list[str] = []
     try:
-        w1 = writer.write(primary)
-        w2 = writer.write(secondary)
+        for decision in decisions:
+            written.append(writer.write(decision))
     finally:
         writer.close()
 
-    print(f"Demo seed complete for workspace={args.workspace!r}")
-    print(f"  Decision event_ids: {w1!r}, {w2!r}")
+    print(f"Demo seed complete for workspace={args.workspace!r} scale={scale!r}")
+    print(f"  Wrote {len(written)} decisions")
     sample = json.dumps(
         {
             "query": "Why CockroachDB payments?",

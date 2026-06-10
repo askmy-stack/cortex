@@ -175,10 +175,10 @@ export function AssistantPanel() {
         type="button"
         className="assistant-fab"
         onClick={() => setAssistantOpen(true)}
-        aria-label="Open Cortex Copilot"
-        title="Cortex Copilot (⌘K)"
+        aria-label="Open Cortex Assist"
+        title="Cortex Assist (⌘K)"
       >
-        <span aria-hidden>✦</span> Copilot
+        <span aria-hidden>✦</span> Assist
       </button>
     );
   }
@@ -188,17 +188,17 @@ export function AssistantPanel() {
       <button
         type="button"
         className="assistant-backdrop"
-        aria-label="Close Copilot"
+        aria-label="Close Assist"
         onClick={() => setAssistantOpen(false)}
       />
-      <aside className="assistant-panel" aria-label="Cortex Copilot" role="complementary">
+      <aside className="assistant-panel" aria-label="Cortex Assist" role="complementary">
         <header className="assistant-panel__head">
           <div className="assistant-panel__brand">
             <span className="copilot-avatar" aria-hidden>
               C
             </span>
             <div>
-              <h2>Cortex Copilot</h2>
+              <h2>Cortex Assist</h2>
               <p>Search memory · explain decisions · guide your next step</p>
             </div>
           </div>
@@ -206,7 +206,7 @@ export function AssistantPanel() {
             type="button"
             className="btn-icon"
             onClick={() => setAssistantOpen(false)}
-            aria-label="Close Copilot"
+            aria-label="Close Assist"
           >
             ×
           </button>
@@ -260,7 +260,7 @@ export function AssistantPanel() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit(draft)}
-            aria-label="Message Cortex Copilot"
+            aria-label="Message Cortex Assist"
           />
           <button
             type="button"

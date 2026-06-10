@@ -84,7 +84,7 @@ export function HomeView() {
               Ask a question
             </button>
             <button type="button" className="btn btn--ghost" onClick={() => setAssistantOpen(true)}>
-              Ask Copilot
+              Ask Assist
             </button>
           </>
         }

@@ -11,7 +11,7 @@ import { SkeletonStack } from "./components/ui/Skeleton";
 import { apiBase } from "./api/client";
 import { resolveApiKey } from "./lib/auth";
 import { hasCompletedOnboarding } from "./lib/onboarding";
-import { ThemeToggle } from "./components/ui/ThemeToggle";
+import { BugReportSection } from "./components/layout/BugReportSection";
 
 const ExploreView = lazy(() =>
   import("./views/ExploreView").then((m) => ({ default: m.ExploreView })),
@@ -62,14 +62,13 @@ function TopbarActions() {
   const secured = Boolean(resolveApiKey(apiKey));
   return (
     <div className="topbar__actions">
-      <ThemeToggle />
       <button
         type="button"
         className="topbar__copilot-btn"
         onClick={() => setAssistantOpen(true)}
-        aria-label="Open Cortex Copilot"
+        aria-label="Open Cortex Assist"
       >
-        ✦ Copilot
+        ✦ Assist
       </button>
       <span
         className={`topbar__badge ${secured ? "topbar__badge--secured" : ""}`}
@@ -125,6 +124,8 @@ function AppChrome() {
       </div>
 
       <MobileNav />
+
+      <BugReportSection />
 
       <footer className="footer">
         <p>
