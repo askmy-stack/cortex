@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
+import { ToastProvider } from "./components/ui/Toast";
 import { Sidebar } from "./components/layout/Sidebar";
 import { AssistantPanel } from "./components/assistant/AssistantPanel";
 import { HomeView } from "./views/HomeView";
@@ -113,7 +114,9 @@ function AppChrome() {
 export default function App() {
   return (
     <AppProvider>
-      <AppChrome />
+      <ToastProvider>
+        <AppChrome />
+      </ToastProvider>
     </AppProvider>
   );
 }

@@ -310,6 +310,110 @@ kbd,
   box-shadow: var(--glow-accent);
 }
 
+.explore-context {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: rgba(94, 234, 212, 0.04);
+}
+
+.explore-context q {
+  color: var(--text);
+  font-style: italic;
+}
+
+.explore-viz {
+  min-height: 280px;
+}
+
+.memory-graph__count {
+  margin-left: auto;
+  font-size: 0.72rem;
+}
+
+.timeline__card--interactive,
+.lineage__card--interactive {
+  cursor: pointer;
+  transition:
+    border-color var(--motion) var(--ease),
+    box-shadow var(--motion) var(--ease);
+}
+
+.timeline__card--interactive:hover,
+.lineage__card--interactive:hover {
+  border-color: rgba(94, 234, 212, 0.35);
+  box-shadow: var(--glow-accent);
+}
+
+.timeline__action {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+}
+
+.contradiction-card__head {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.contradiction-card__body {
+  margin: 0.5rem 0 0;
+}
+
+.contradiction-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.contradiction-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.btn--sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.capture-success {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  padding: 0.75rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  background: var(--surface-glass-strong);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow), var(--glow-accent);
+  font-size: 0.88rem;
+  color: var(--text);
+  animation: riseIn 0.35s var(--ease-out-expo);
+  max-width: min(420px, 92vw);
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .sidebar__brand {
+    display: none;
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .view > * {

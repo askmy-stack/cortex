@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { MemoryGraph } from "../components/memory/MemoryGraph";
 import { TimelineView } from "../components/memory/TimelineView";
 import { LineageView } from "../components/memory/LineageView";
 import { DecisionCard } from "../components/memory/DecisionCard";
+import { WorkspaceBar } from "../components/layout/WorkspaceBar";
 import { StateView } from "../components/ui/StateView";
+import { resolveDecisionFocus } from "../lib/decision";
 
 type ExploreTab = "graph" | "timeline" | "lineage";
 
@@ -22,6 +24,24 @@ export function ExploreView() {
   const focusId = selectedDecisionId ?? exploreDecisions[0]?.event_id ?? null;
   const decisions = exploreDecisions.length > 0 ? exploreDecisions : lastQuery?.results ?? [];
 
+  const handleCardSelect = useCallback(
+    (id: string) => {
+      setSelectedDecisionId(resolveDecisionFocus(id, decisions, focusId));
+      if (id.startsWith("person:") || id.startsWith("system:")) {
+        setTab("graph");
+      }
+    },
+    [decisions, focusId, setSelectedDecisionId],
+  );
+
+  const handleTimelineSelect = useCallback(
+    (decisionId: string) => {
+      setSelectedDecisionId(decisionId);
+      setTab("graph");
+    },
+    [setSelectedDecisionId],
+  );
+
   return (
     <article className="view view--explore fade-in">
       <header className="view__header">
@@ -30,6 +50,16 @@ export function ExploreView() {
           See how decisions, people, and systems connect — plus timeline and lineage views.
         </p>
       </header>
+
+      <WorkspaceBar />
+
+      {lastQuery && decisions.length > 0 ? (
+        <p className="explore-context muted" role="status">
+          Showing <strong>{decisions.length}</strong> result{decisions.length === 1 ? "" : "s"} for{" "}
+          <q>{lastQuery.query}</q>
+          {lastQuery.latency_ms ? <> · {lastQuery.latency_ms}ms</> : null}
+        </p>
+      ) : null}
 
       {decisions.length === 0 ? (
         <StateView
@@ -73,21 +103,26 @@ export function ExploreView() {
               <MemoryGraph
                 decisions={decisions}
                 focusId={focusId}
-                // Graph focus drives card highlight + lineage, both of which need a
-                // real decision id. Person/system nodes are prefixed, so ignore them.
                 onFocus={(id) => {
-                  if (!id.startsWith("person:") && !id.startsWith("system:")) {
-                    setSelectedDecisionId(id);
-                  }
+                  const next = resolveDecisionFocus(id, decisions, focusId);
+                  if (next) setSelectedDecisionId(next);
                 }}
               />
             ) : null}
-            {tab === "timeline" ? <TimelineView decisions={decisions} /> : null}
+            {tab === "timeline" ? (
+              <TimelineView decisions={decisions} onSelect={handleTimelineSelect} />
+            ) : null}
             {tab === "lineage" && focusId ? (
-              <LineageView decisionId={focusId} workspaceId={workspaceId} />
+              <LineageView
+                decisionId={focusId}
+                workspaceId={workspaceId}
+                onSelectDecision={setSelectedDecisionId}
+              />
             ) : null}
             {tab === "lineage" && !focusId ? (
-              <p className="muted">Select a decision below to trace its lineage.</p>
+              <StateView icon="◇" title="Select a decision">
+                Pick a decision below to trace supersession and trigger lineage.
+              </StateView>
             ) : null}
           </section>
 
@@ -99,7 +134,7 @@ export function ExploreView() {
                   key={d.event_id}
                   decision={d}
                   selected={d.event_id === focusId}
-                  onSelect={() => setSelectedDecisionId(d.event_id)}
+                  onSelect={handleCardSelect}
                 />
               ))}
             </div>

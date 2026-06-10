@@ -7,9 +7,11 @@ import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
 import { Skeleton } from "../components/ui/Skeleton";
 import { StateView } from "../components/ui/StateView";
+import { useToast } from "../components/ui/Toast";
 
 export function AgentsView() {
-  const { workspaceId, pushMessage } = useApp();
+  const { workspaceId, pushMessage, setView } = useApp();
+  const { showToast } = useToast();
   const [context, setContext] = useState(
     "I'm implementing checkout improvements for payments-service and need organizational context on database and cache choices.",
   );
@@ -66,6 +68,7 @@ export function AgentsView() {
         workspace_id: workspaceId.trim() || "local-dev",
       });
       setRememberSuccess(res.event_id);
+      showToast("Memory queued — search after the pipeline processes it.");
       pushMessage(
         "assistant",
         `Queued new memory for extraction (\`${res.event_id.slice(0, 8)}…\`). It will appear in search after the pipeline processes it.`,
@@ -175,9 +178,14 @@ export function AgentsView() {
           </StateView>
         ) : null}
         {rememberSuccess ? (
-          <p className="text-ok capture-success" role="status">
-            Queued · event <code>{rememberSuccess}</code>
-          </p>
+          <div className="capture-success" role="status">
+            <p className="text-ok">
+              Queued · event <code>{rememberSuccess}</code>
+            </p>
+            <button type="button" className="btn btn--primary" onClick={() => setView("ask")}>
+              Search memory →
+            </button>
+          </div>
         ) : null}
       </section>
 
