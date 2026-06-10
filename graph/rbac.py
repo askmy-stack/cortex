@@ -12,6 +12,8 @@ _DEFAULT_POLICY: dict[str, Any] = {
     "gdpr_subject": False,
 }
 
+_GDPR_ERASURE_ROLES = frozenset({"admin", "gdpr_officer", "legal"})
+
 
 def normalize_access_policy(policy: Any) -> dict[str, Any]:
     """Coerce stored access_policy values into a dict."""
@@ -40,6 +42,17 @@ def can_access(policy: Any, caller_roles: list[str]) -> bool:
     if "authenticated" in allowed_roles:
         return True
     return bool(allowed_roles.intersection(caller_roles))
+
+
+def can_erase(caller_roles: list[str]) -> bool:
+    """Return True when caller may invoke GDPR Right to Erasure."""
+    return bool(_GDPR_ERASURE_ROLES.intersection(caller_roles))
+
+
+def is_gdpr_subject(policy: Any) -> bool:
+    """Return True when a node access policy marks GDPR-subject data."""
+    normalized = normalize_access_policy(policy)
+    return bool(normalized.get("gdpr_subject", False))
 
 
 def serialize_access_policy(policy: dict[str, Any] | None) -> str:

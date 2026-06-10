@@ -50,8 +50,7 @@ def _jira_decision(raw: RawEvent) -> DecisionEvent:
 
 
 @patch("pipeline.extraction_worker.GraphWriter")
-@patch("pipeline.extraction_worker.TrustScorer")
-@patch("pipeline.extraction_worker.ImportanceScorer")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
 @patch("pipeline.extraction_worker.DecisionExtractor")
 @patch("pipeline.extraction_worker.Producer")
 @patch("pipeline.extraction_worker.Consumer")
@@ -59,25 +58,20 @@ def test_jira_comment_through_worker_scores_before_write(
     consumer_cls: MagicMock,
     producer_cls: MagicMock,
     extractor_cls: MagicMock,
-    importance_cls: MagicMock,
-    trust_cls: MagicMock,
+    scoring_cls: MagicMock,
     writer_cls: MagicMock,
 ) -> None:
     """Jira RawEvent runs extract → importance → trust → Neo4j write in order."""
     raw_event = _jira_raw()
     decision = _jira_decision(raw_event)
 
-    def _apply_importance(d: DecisionEvent) -> DecisionEvent:
+    def _apply_scores(d: DecisionEvent) -> DecisionEvent:
         d.importance_score = 0.8
-        return d
-
-    def _apply_trust(d: DecisionEvent) -> DecisionEvent:
         d.trust_score = 0.74
         return d
 
     extractor_cls.return_value.extract.return_value = decision
-    importance_cls.return_value.score.side_effect = _apply_importance
-    trust_cls.return_value.score.side_effect = _apply_trust
+    scoring_cls.return_value.score.side_effect = _apply_scores
     writer_cls.return_value.write.return_value = decision.event_id
 
     worker = ExtractionWorker(bootstrap_servers="localhost:9092")
@@ -85,6 +79,5 @@ def test_jira_comment_through_worker_scores_before_write(
 
     assert event_id == decision.event_id
     extractor_cls.return_value.extract.assert_called_once_with(raw_event)
-    importance_cls.return_value.score.assert_called_once()
-    trust_cls.return_value.score.assert_called_once()
+    scoring_cls.return_value.score.assert_called_once()
     writer_cls.return_value.write.assert_called_once_with(decision)

@@ -419,3 +419,69 @@
 1. Real GitHub/Jira webhook URLs (ngrok or deploy)
 2. Phase 3: `cortex.query()` hardening + MCP live inject wiring
 3. Graph schema validation against multi-source decisions
+
+---
+
+## Session — 2026-06-10 — Phase 4 kickoff: scoring pipeline enforcement
+**Duration:** ~45m
+**Phase:** Phase 4 — Importance scorer + Trust scorer + RBAC
+
+### Gap analysis (start of session)
+- **Already implemented:** `scoring/importance.py`, `scoring/trust_scorer.py`, `graph/rbac.py`, pipeline worker calling both scorers, `GraphWriter` discard/quarantine gates, RBAC filtering on all `GraphQueryService` read paths + API `resolve_roles`.
+- **Gaps found:** No single enforcement module for write-path scoring; `GraphWriter` did not reject explicitly unscored events (0.0/0.0); `scripts/seed_demo.py` bypassed scorers with hardcoded scores; pipeline discarded low-importance only via writer `ValueError` (late); CMVK majority voting, GDPR cascade, `V004__rbac_enforcement.cypher` migration still outstanding.
+
+### Built
+- **`scoring/write_pipeline.py`** — `DecisionScoringPipeline`, `assert_scored_for_write()`, `write_reject_reason()` — shared write-path gate
+- **`graph/writer.py`** — rejects unscored decisions before threshold checks
+- **`pipeline/extraction_worker.py`** — uses scoring pipeline; early discard/quarantine before Neo4j write
+- **`scripts/seed_demo.py`** — runs scorers before write; skips sub-threshold decisions
+- Tests: `tests/scoring/test_write_pipeline.py`; extended pipeline, writer, RBAC, integration mocks
+
+### State at end
+- Branch **`feature/phase-4-scoring-rbac`** from `origin/main` (Phase 3 not merged — no dependency)
+- **306 passed**, 1 failed (`tests/api/test_telemetry.py` — pre-existing OTLP optional-deps mock; unrelated to Phase 4)
+- Changes **uncommitted** per session instructions
+
+### Next session starts with
+1. GDPR delete cascade + `graph/migrations/V009__rbac_enforcement.cypher`
+2. Commit + PR for Phase 4 branch
+3. LLM-backed CMVK verifiers (replace heuristic stand-ins for production)
+
+---
+
+## Session — 2026-06-10 — Phase 4: CMVK + quarantine audit store
+**Duration:** ~30m
+**Phase:** Phase 4 — Importance scorer + Trust scorer + RBAC
+
+### Built
+- **`scoring/cmvk.py`** — `CrossModelVerificationKernel` with 3-verifier majority vote (2/3) for importance > 0.8; heuristic verifiers for dev/test; `CORTEX_CMVK_ENABLED` toggle
+- **`memory/quarantine.py`** — TimescaleDB audit store for rejected writes (`cortex_quarantine_events`)
+- **`scoring/write_pipeline.py`** — CMVK step between importance and trust; new `cmvk_disagreement` reject reason
+- **`pipeline/extraction_worker.py`** + **`scripts/seed_demo.py`** — persist quarantine records on reject paths
+- Tests: `tests/scoring/test_cmvk.py`, `tests/memory/test_quarantine.py`; extended write_pipeline and extraction_worker tests
+- Fixed pre-existing **`tests/api/test_telemetry.py`** mock path (`api.telemetry.FastAPIInstrumentor`)
+
+### State at end
+- Branch **`feature/phase-4-scoring-rbac`** — uncommitted
+- **317 passed** (full suite, `--no-cov`)
+
+---
+
+## Session — 2026-06-10 — Phase 4: RBAC migration + GDPR cascade
+**Duration:** ~25m
+**Phase:** Phase 4 — Importance scorer + Trust scorer + RBAC
+
+### Built
+- **`graph/migrations/V009__rbac_enforcement.cypher`** — access_policy indices on all memory node types; `GdprAuditLog` constraint + workspace index
+- **`graph/gdpr.py`** — `GdprErasureService.erase_subject()` cascade: Rationale → Contradiction → Decision → Person + audit log
+- **`graph/rbac.py`** — `can_erase()`, `is_gdpr_subject()` helpers
+- Tests: `tests/graph/test_gdpr.py`; extended `test_rbac.py`, `test_migrate_strip.py`
+
+### State at end
+- Branch **`feature/phase-4-scoring-rbac`** — uncommitted
+- **324 passed** (full suite, `--no-cov`)
+
+### Next session starts with
+1. Commit + open PR for Phase 4 branch
+2. LLM-backed CMVK verifiers (production)
+3. GDPR erasure API route (admin-only)
