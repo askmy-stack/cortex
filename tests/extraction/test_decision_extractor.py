@@ -11,6 +11,7 @@ Tests cover:
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -21,6 +22,8 @@ from extraction.decision_extractor import (
     DecisionExtractor,
     _content_hash,
     _extraction_cache,
+    _looks_like_json_schema,
+    _parse_ollama_json,
 )
 from shared.models import (
     CONFIDENCE_DISCARD,
@@ -400,3 +403,16 @@ class TestContentHash:
     def test_hash_is_hex_string(self) -> None:
         h = _content_hash("test")
         assert all(c in "0123456789abcdef" for c in h)
+
+
+class TestOllamaJsonParsing:
+    def test_rejects_schema_echo(self) -> None:
+        raw = '{"type": "object", "properties": {"content": {"type": "string"}}}'
+        assert _looks_like_json_schema(json.loads(raw)) is True
+        assert _parse_ollama_json(raw) is None
+
+    def test_parses_valid_decision(self) -> None:
+        raw = '{"event_type": "decision", "content": "We chose Kafka.", "confidence": 0.9}'
+        parsed = _parse_ollama_json(raw)
+        assert parsed is not None
+        assert parsed["content"] == "We chose Kafka."
