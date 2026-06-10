@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { injectContext } from "../api/client";
+import { injectContext, rememberMemory } from "../api/client";
+import { isUnauthorizedMessage } from "../lib/auth";
 import { useApp } from "../context/AppContext";
 import { injectSummary } from "../lib/assistant";
 import { DecisionCard } from "../components/memory/DecisionCard";
 import { WorkspaceBar } from "../components/layout/WorkspaceBar";
 import { Skeleton } from "../components/ui/Skeleton";
 import { StateView } from "../components/ui/StateView";
+import { useToast } from "../components/ui/Toast";
 
 export function AgentsView() {
-  const { workspaceId, pushMessage } = useApp();
+  const { workspaceId, pushMessage, setView } = useApp();
+  const { showToast } = useToast();
   const [context, setContext] = useState(
     "I'm implementing checkout improvements for payments-service and need organizational context on database and cache choices.",
   );
@@ -17,6 +20,12 @@ export function AgentsView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Awaited<ReturnType<typeof injectContext>> | null>(null);
+  const [memoryText, setMemoryText] = useState(
+    "We chose Redis for session cache at checkout because sub-millisecond reads matter more than write durability for cart state.",
+  );
+  const [rememberLoading, setRememberLoading] = useState(false);
+  const [rememberSuccess, setRememberSuccess] = useState<string | null>(null);
+  const [rememberError, setRememberError] = useState<string | null>(null);
 
   async function run() {
     if (context.trim().length < 10) {
@@ -41,6 +50,34 @@ export function AgentsView() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitMemory() {
+    const content = memoryText.trim();
+    if (content.length < 10) {
+      setRememberError("Memory text must be at least 10 characters.");
+      return;
+    }
+    setRememberLoading(true);
+    setRememberError(null);
+    setRememberSuccess(null);
+    try {
+      const res = await rememberMemory({
+        content,
+        workspace_id: workspaceId.trim() || "local-dev",
+      });
+      setRememberSuccess(res.event_id);
+      showToast("Memory queued — search after the pipeline processes it.");
+      pushMessage(
+        "assistant",
+        `Queued new memory for extraction (\`${res.event_id.slice(0, 8)}…\`). It will appear in search after the pipeline processes it.`,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setRememberError(msg);
+    } finally {
+      setRememberLoading(false);
     }
   }
 
@@ -98,8 +135,59 @@ export function AgentsView() {
       {error ? (
         <StateView tone="error" icon="!" title="Injection failed">
           {error}
+          {isUnauthorizedMessage(error) ? (
+            <p className="muted">Open <strong>Connection</strong> above and save your API key.</p>
+          ) : null}
         </StateView>
       ) : null}
+
+      <section className="panel panel--capture" aria-labelledby="capture-heading">
+        <header className="panel__head">
+          <h2 id="capture-heading">Capture a decision</h2>
+        </header>
+        <p className="muted">
+          Submit explicit organizational memory into the ingestion pipeline — same path as MCP{" "}
+          <code>cortex_remember</code>.
+        </p>
+        <label className="field-label" htmlFor="memory-text">
+          What was decided?
+        </label>
+        <textarea
+          id="memory-text"
+          className="textarea"
+          rows={4}
+          value={memoryText}
+          onChange={(e) => setMemoryText(e.target.value)}
+        />
+        <footer className="ask-form__actions">
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={() => void submitMemory()}
+            disabled={rememberLoading}
+          >
+            {rememberLoading ? "Queuing…" : "Submit to pipeline"}
+          </button>
+        </footer>
+        {rememberError ? (
+          <StateView tone="error" icon="!" title="Capture failed">
+            {rememberError}
+            {isUnauthorizedMessage(rememberError) ? (
+              <p className="muted">Open <strong>Connection</strong> above and save your API key.</p>
+            ) : null}
+          </StateView>
+        ) : null}
+        {rememberSuccess ? (
+          <div className="capture-success" role="status">
+            <p className="text-ok">
+              Queued · event <code>{rememberSuccess}</code>
+            </p>
+            <button type="button" className="btn btn--primary" onClick={() => setView("ask")}>
+              Search memory →
+            </button>
+          </div>
+        ) : null}
+      </section>
 
       {loading && !result ? (
         <section className="panel" aria-live="polite">

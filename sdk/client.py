@@ -20,11 +20,16 @@ class CortexClient:
         self,
         base_url: str = "http://localhost:8000",
         *,
+        api_key: str | None = None,
         roles: str = "authenticated",
         timeout: float = 30.0,
     ) -> None:
         self._base_url = base_url.rstrip("/")
-        self._headers = {"X-Cortex-Roles": roles, "Content-Type": "application/json"}
+        self._headers: dict[str, str] = {"Content-Type": "application/json"}
+        if api_key:
+            self._headers["Authorization"] = f"Bearer {api_key}"
+        else:
+            self._headers["X-Cortex-Roles"] = roles
         self._timeout = timeout
 
     def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:

@@ -439,11 +439,15 @@ class GitHubConnector:
         Returns:
             {"status": "ok", "event_id": ...} | {"status": "skipped", ...}
         """
-        # Verify signature if secret is configured
-        if self._webhook_secret and signature and raw_body:
-            if not verify_github_signature(raw_body, signature, self._webhook_secret):
-                log.warning("github.webhook.signature_invalid")
-                return {"status": "error", "reason": "invalid_signature"}
+        # When a secret is configured, verification is mandatory: a missing
+        # signature or body must be rejected, not silently skipped.
+        if self._webhook_secret and not (
+            signature
+            and raw_body
+            and verify_github_signature(raw_body, signature, self._webhook_secret)
+        ):
+            log.warning("github.webhook.signature_invalid")
+            return {"status": "error", "reason": "invalid_signature"}
 
         raw_event = normalise_github_event(payload, event_type, self.workspace_id)
         if raw_event is None:

@@ -143,6 +143,30 @@ a {
   color: var(--text-muted);
 }
 
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.topbar__badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--bg-raised);
+}
+
+.topbar__badge--secured {
+  color: var(--ok);
+  border-color: rgba(110, 231, 183, 0.35);
+  background: rgba(110, 231, 183, 0.08);
+}
+
 .topbar__api {
   font-size: 0.875rem;
   text-decoration: none;
@@ -305,11 +329,14 @@ a {
 }
 
 .assistant-fab {
-  display: none;
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
   z-index: 200;
+  min-height: 44px;
   padding: 0.75rem 1.1rem;
   border-radius: 999px;
   border: none;
@@ -322,6 +349,19 @@ a {
 }
 .assistant-fab:hover {
   transform: translateY(-2px);
+}
+
+/* Backdrop only materializes for the mobile/tablet overlay drawer. */
+.assistant-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  border: none;
+  background: rgba(3, 5, 9, 0.6);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+  animation: fadeIn var(--motion) var(--ease);
 }
 
 /* Views */
@@ -729,6 +769,17 @@ a {
 .badge--active {
   color: var(--ok);
 }
+.badge--superseded,
+.badge--deprecated {
+  color: var(--warn);
+}
+.badge--invalid,
+.badge--rejected {
+  color: var(--danger);
+}
+.badge--pending {
+  color: var(--accent);
+}
 
 /* Score rings */
 .score-ring {
@@ -967,6 +1018,40 @@ a {
   color: var(--accent);
 }
 
+/* Layout helpers referenced in JSX (previously unstyled) */
+.ask-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.explore-viz {
+  overflow-x: auto;
+}
+.decision-card__footer {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.lineage__content {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+.lineage__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
 /* Alerts & misc */
 .alert {
   padding: 0.85rem 1rem;
@@ -1043,20 +1128,101 @@ a {
   margin-top: 0.5rem;
 }
 
-.workspace-bar {
+.connection-bar {
   margin-bottom: 1.25rem;
 }
 
-.workspace-bar__label {
+.connection-bar__primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  justify-content: space-between;
+}
+
+.connection-bar__workspace {
+  flex: 1;
+  min-width: min(100%, 280px);
+}
+
+.connection-bar__label {
   font-size: 0.8rem;
   color: var(--text-muted);
   display: block;
   margin-bottom: 0.35rem;
 }
 
-.workspace-bar__input {
+.connection-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.connection-bar__input {
   flex: 1;
   min-width: 140px;
+}
+
+.connection-bar__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.connection-bar__toggle--open {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.connection-bar__status {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.connection-bar__status--secured {
+  opacity: 1;
+}
+
+.connection-bar__settings {
+  margin-top: 0.75rem;
+}
+
+.connection-bar__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.connection-bar__saved {
+  margin: 0.65rem 0 0;
+  font-size: 0.8rem;
+}
+
+.panel--inset {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+}
+
+.panel--capture {
+  margin-top: 1.25rem;
+  border-color: rgba(94, 234, 212, 0.15);
+}
+
+.capture-success {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+}
+
+/* Legacy alias — workspace-bar__row used in ask-form */
+.workspace-bar__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 kbd {
@@ -1199,13 +1365,53 @@ code {
   .app__body {
     grid-template-columns: var(--sidebar-w) 1fr;
   }
+  /* The guide detaches into an overlay drawer so it never steals layout width
+     and is always reachable via the floating action button. */
   .assistant-panel {
-    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(380px, 92vw);
+    max-height: 100vh;
+    z-index: 300;
+    border-left: 1px solid var(--border-strong);
+    box-shadow: -12px 0 48px rgba(0, 0, 0, 0.5);
+    animation: slideInRight var(--motion-slow) var(--ease);
   }
-  .assistant-fab {
+  .assistant-backdrop {
+    display: block;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Comfortable touch targets on tablets/phones (WCAG 2.5.5 ~44px) */
+@media (max-width: 1024px) and (pointer: coarse) {
+  .chip,
+  .subtab,
+  .chip-link,
+  .btn-text,
+  .topbar__api {
+    min-height: 44px;
     display: inline-flex;
-    gap: 0.4rem;
     align-items: center;
+  }
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

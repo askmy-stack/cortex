@@ -348,8 +348,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://localhost:8000
+      # No VITE_API_URL: the SPA calls relative paths and nginx proxies them to
+      # the api service, so the dashboard works regardless of the host machine.
     container_name: cortex-frontend
     restart: unless-stopped
     networks: [cortex]

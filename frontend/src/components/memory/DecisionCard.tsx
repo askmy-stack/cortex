@@ -68,7 +68,7 @@ function DecisionCardInner({ decision: d, defaultOpen, onSelect, selected }: Pro
                     <button
                       type="button"
                       className="chip-link"
-                      onClick={() => onSelect?.(s)}
+                      onClick={() => onSelect?.(`system:${s}`)}
                     >
                       {s}
                     </button>

@@ -55,6 +55,27 @@ def _get_linear_connector() -> LinearConnector:
     return _linear_connector
 
 
+def _parse_json_body(body: bytes) -> Any:
+    """Decode a raw webhook body into JSON, returning HTTP 400 on malformed input."""
+    try:
+        return json.loads(body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Malformed JSON payload",
+        ) from exc
+
+
+def _reject_invalid_signature(result: dict[str, Any]) -> dict[str, Any]:
+    """Translate a connector's invalid-signature result into a 401 response."""
+    if result.get("reason") == "invalid_signature":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
+    return result
+
+
 def _verify_slack_signature(
     body: bytes,
     timestamp: str | None,
@@ -101,7 +122,7 @@ async def slack_webhook(
             detail="Invalid Slack signature",
         )
 
-    payload = json.loads(body.decode("utf-8"))
+    payload = _parse_json_body(body)
     result = _get_slack_connector().handle_event(payload)
     if "challenge" in result:
         return result
@@ -119,25 +140,37 @@ async def github_webhook(
 ) -> dict[str, Any]:
     """Receive GitHub webhook payloads."""
     body = await request.body()
-    payload = json.loads(body.decode("utf-8"))
+    payload = _parse_json_body(body)
     if x_github_event is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing X-GitHub-Event header",
         )
-    return _get_github_connector().handle_event(
-        payload,
-        event_type=x_github_event,
-        signature=x_hub_signature_256,
-        raw_body=body,
+    return _reject_invalid_signature(
+        _get_github_connector().handle_event(
+            payload,
+            event_type=x_github_event,
+            signature=x_hub_signature_256,
+            raw_body=body,
+        )
     )
 
 
 @router.post("/jira")
-async def jira_webhook(request: Request) -> dict[str, Any]:
+async def jira_webhook(
+    request: Request,
+    x_hub_signature: str | None = Header(default=None, alias="X-Hub-Signature"),
+) -> dict[str, Any]:
     """Receive Jira webhook payloads."""
-    payload = await request.json()
-    return _get_jira_connector().handle_event(payload)
+    body = await request.body()
+    payload = _parse_json_body(body)
+    return _reject_invalid_signature(
+        _get_jira_connector().handle_event(
+            payload,
+            signature=x_hub_signature,
+            raw_body=body,
+        )
+    )
 
 
 @router.post("/linear")
@@ -147,9 +180,11 @@ async def linear_webhook(
 ) -> dict[str, Any]:
     """Receive Linear webhook payloads."""
     body = await request.body()
-    payload = json.loads(body.decode("utf-8"))
-    return _get_linear_connector().handle_event(
-        payload,
-        signature=linear_signature,
-        raw_body=body,
+    payload = _parse_json_body(body)
+    return _reject_invalid_signature(
+        _get_linear_connector().handle_event(
+            payload,
+            signature=linear_signature,
+            raw_body=body,
+        )
     )

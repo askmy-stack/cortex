@@ -27,6 +27,8 @@ _SOURCE_PRIOR: dict[str, float] = {
     "linear": 0.60,
     "meeting": 0.50,
     "cicd": 0.55,
+    # Human-submitted via the /remember API — treated as moderately trusted.
+    "manual": 0.60,
 }
 _DEFAULT_SOURCE_PRIOR = 0.50
 _VERIFIER_BOOST = 0.08

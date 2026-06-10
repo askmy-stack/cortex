@@ -88,3 +88,30 @@ def test_low_importance_discarded_before_write(
     worker = ExtractionWorker(bootstrap_servers="localhost:9092")
     assert worker.process_raw_event(raw) is None
     writer_cls.return_value.write.assert_called_once()
+
+
+@patch("pipeline.extraction_worker.GraphWriter")
+@patch("pipeline.extraction_worker.TrustScorer")
+@patch("pipeline.extraction_worker.ImportanceScorer")
+@patch("pipeline.extraction_worker.DecisionExtractor")
+@patch("pipeline.extraction_worker.Producer")
+@patch("pipeline.extraction_worker.Consumer")
+def test_invalid_message_routed_to_dlq(
+    consumer_cls: MagicMock,
+    producer_cls: MagicMock,
+    extractor_cls: MagicMock,
+    importance_cls: MagicMock,
+    trust_cls: MagicMock,
+    writer_cls: MagicMock,
+) -> None:
+    worker = ExtractionWorker(bootstrap_servers="localhost:9092")
+    message = MagicMock()
+    message.error.return_value = None
+    message.value.return_value = b"not-json{"
+    message.key.return_value = b"k1"
+    message.topic.return_value = "cortex.raw.slack.messages"
+
+    worker._handle_message(message)
+
+    producer_cls.return_value.produce.assert_called_once()
+    assert producer_cls.return_value.produce.call_args.kwargs["topic"] == "cortex.dlq.raw"

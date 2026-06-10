@@ -8,9 +8,10 @@ import { StateView } from "../ui/StateView";
 type Props = {
   decisionId: string;
   workspaceId: string;
+  onSelectDecision?: (id: string) => void;
 };
 
-export function LineageView({ decisionId, workspaceId }: Props) {
+export function LineageView({ decisionId, workspaceId, onSelectDecision }: Props) {
   const [nodes, setNodes] = useState<DecisionResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +64,22 @@ export function LineageView({ decisionId, workspaceId }: Props) {
       {nodes.map((d, i) => (
         <li key={d.event_id} className="lineage__step">
           <span className="lineage__index">{i + 1}</span>
-          <article className="lineage__card">
+          <article
+            className={`lineage__card ${onSelectDecision ? "lineage__card--interactive" : ""}`}
+            role={onSelectDecision ? "button" : undefined}
+            tabIndex={onSelectDecision ? 0 : undefined}
+            onClick={onSelectDecision ? () => onSelectDecision(d.event_id) : undefined}
+            onKeyDown={
+              onSelectDecision
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectDecision(d.event_id);
+                    }
+                  }
+                : undefined
+            }
+          >
             <p className="lineage__content">{d.content}</p>
             <p className="lineage__meta">
               {formatRelativeTime(d.extracted_at)} · {d.status}
@@ -72,7 +88,11 @@ export function LineageView({ decisionId, workspaceId }: Props) {
                 : ""}
             </p>
           </article>
-          {i < nodes.length - 1 ? <span className="lineage__arrow" aria-hidden>↓</span> : null}
+          {i < nodes.length - 1 ? (
+            <span className="lineage__arrow" aria-hidden>
+              ↓
+            </span>
+          ) : null}
         </li>
       ))}
     </ol>

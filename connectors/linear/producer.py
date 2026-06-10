@@ -197,9 +197,14 @@ class LinearConnector:
         signature: str | None = None,
         raw_body: bytes | None = None,
     ) -> dict[str, str]:
-        if self._webhook_secret and signature and raw_body:
-            if not verify_linear_signature(raw_body, signature, self._webhook_secret):
-                return {"status": "error", "reason": "invalid_signature"}
+        # When a secret is configured, verification is mandatory: a missing
+        # signature or body must be rejected, not silently skipped.
+        if self._webhook_secret and not (
+            signature
+            and raw_body
+            and verify_linear_signature(raw_body, signature, self._webhook_secret)
+        ):
+            return {"status": "error", "reason": "invalid_signature"}
 
         raw_event = normalise_linear_event(payload, self.workspace_id)
         if raw_event is None:

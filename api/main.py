@@ -19,13 +19,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI, Header, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.contradictions import router as contradictions_router
 from api.decisions import router as decisions_router
-from api.deps import caller_roles, memory, set_memory_service
+from api.deps import RolesDep, memory, set_memory_service
 from api.memory import MemoryService
 from api.remember import router as remember_router
 from api.schemas import (
@@ -73,10 +73,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Browsers reject `Access-Control-Allow-Origin: *` together with credentials.
+# Only enable credentials when an explicit origin allowlist is configured.
+_cors_origins_raw = os.environ.get("CORS_ORIGINS", "").strip()
+if _cors_origins_raw:
+    _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+    _cors_allow_credentials = True
+else:
+    _cors_origins = ["*"]
+    _cors_allow_credentials = False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_allow_credentials,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
@@ -157,7 +167,7 @@ async def health() -> HealthResponse:
 )
 async def query(
     request: QueryRequest,
-    x_cortex_roles: str | None = Header(default=None, alias="X-Cortex-Roles"),
+    roles: RolesDep,
 ) -> QueryResponse:
     """Search organizational decisions by natural language query.
 
@@ -183,7 +193,7 @@ async def query(
             min_importance=request.min_importance,
             min_trust=request.min_trust,
             event_types=request.event_types,
-            caller_roles=caller_roles(x_cortex_roles),
+            caller_roles=roles,
         )
         results = [DecisionResult(**record) for record in records]
     except Exception as exc:
@@ -218,7 +228,7 @@ async def query(
 )
 async def inject(
     request: InjectRequest,
-    x_cortex_roles: str | None = Header(default=None, alias="X-Cortex-Roles"),
+    roles: RolesDep,
 ) -> InjectResponse:
     """Inject relevant organizational memory into an AI agent's context window.
 
@@ -240,7 +250,7 @@ async def inject(
         injected = await memory().inject_decisions(
             context=request.context,
             workspace_id=request.workspace_id,
-            caller_roles=caller_roles(x_cortex_roles),
+            caller_roles=roles,
             limit=min(request.max_tokens // 400, 10),
         )
     except Exception as exc:

@@ -62,6 +62,25 @@ export function HomeView() {
         </div>
       </header>
 
+      <ul className="principles-strip" aria-label="Design principles">
+        <li className="principle-pill">
+          <span className="principle-pill__icon" aria-hidden>◈</span>
+          <span><strong>Decisions</strong> over documents</span>
+        </li>
+        <li className="principle-pill">
+          <span className="principle-pill__icon" aria-hidden>◎</span>
+          <span><strong>Graph</strong> relationships</span>
+        </li>
+        <li className="principle-pill">
+          <span className="principle-pill__icon" aria-hidden>⚡</span>
+          <span><strong>Active</strong> injection</span>
+        </li>
+        <li className="principle-pill">
+          <span className="principle-pill__icon" aria-hidden>⚖</span>
+          <span><strong>Trust</strong> & provenance</span>
+        </li>
+      </ul>
+
       <section className="card-grid">
         <article className="info-card">
           <span className="info-card__icon" aria-hidden>◈</span>

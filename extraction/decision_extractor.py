@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections import OrderedDict
 from typing import Any
 
 import structlog
@@ -120,7 +121,29 @@ Guidelines:
 # Decision: D-009 — cache by content hash, never call API twice for same content
 # ─────────────────────────────────────────────────────────────────────────────
 
-_extraction_cache: dict[str, DecisionEvent | None] = {}
+class _BoundedExtractionCache(OrderedDict):
+    """Content-hash extraction cache with a hard size cap.
+
+    Long-running workers would otherwise grow this dict without bound (one entry
+    per unique message), so we evict the least-recently-inserted entries once the
+    configured ceiling is reached.
+    """
+
+    def __init__(self, maxsize: int = 2048) -> None:
+        super().__init__()
+        self._maxsize = max(1, maxsize)
+
+    def __setitem__(self, key: str, value: DecisionEvent | None) -> None:
+        if key in self:
+            super().__delitem__(key)
+        super().__setitem__(key, value)
+        while len(self) > self._maxsize:
+            self.popitem(last=False)
+
+
+_extraction_cache: _BoundedExtractionCache = _BoundedExtractionCache(
+    int(os.environ.get("CORTEX_EXTRACTION_CACHE_SIZE", "2048"))
+)
 
 
 def _content_hash(content: str) -> str:

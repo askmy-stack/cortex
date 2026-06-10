@@ -31,6 +31,10 @@ RAW_TOPICS = [
     "cortex.raw.manual.events",
 ]
 EXTRACTED_TOPIC = "cortex.extracted.decisions"
+# Poison-pill quarantine: messages that cannot be parsed or processed are routed
+# here (with the original bytes intact) instead of being silently dropped, so
+# they can be inspected and replayed later.
+DLQ_TOPIC = "cortex.dlq.raw"
 CONSUMER_GROUP = "cortex-extraction-worker"
 
 # Bounded de-duplication cache for in-flight raw events. The pipeline worker
@@ -196,6 +200,23 @@ class ExtractionWorker:
 
         return event_id
 
+    def _publish_to_dlq(self, message: Any, reason: str) -> None:
+        """Route an unprocessable message to the dead-letter topic, bytes intact."""
+        try:
+            self._producer.produce(
+                topic=DLQ_TOPIC,
+                key=message.key(),
+                value=message.value(),
+                headers=[
+                    ("error", reason.encode("utf-8")[:500]),
+                    ("source_topic", (message.topic() or "").encode("utf-8")),
+                ],
+                callback=_delivery_callback,
+            )
+            self._producer.poll(0)
+        except (BufferError, KafkaException) as exc:
+            log.error("pipeline.dlq.publish_failed", reason=reason, error=str(exc))
+
     def _handle_message(self, message: Any) -> None:
         if message.error():
             if message.error().code() == KafkaError._PARTITION_EOF:
@@ -207,9 +228,18 @@ class ExtractionWorker:
             raw_event = RawEvent.model_validate(payload)
         except (json.JSONDecodeError, ValidationError, UnicodeDecodeError) as exc:
             log.error("pipeline.message.invalid", error=str(exc))
+            self._publish_to_dlq(message, f"invalid_message: {exc}")
             return
 
-        self.process_raw_event(raw_event)
+        try:
+            self.process_raw_event(raw_event)
+        except Exception as exc:  # noqa: BLE001 - poison-pill protection for the loop
+            log.error(
+                "pipeline.process.failed",
+                event_id=raw_event.event_id,
+                error=str(exc),
+            )
+            self._publish_to_dlq(message, f"processing_failed: {exc}")
 
     def run_once(self, timeout: float = 1.0) -> bool:
         """Poll Kafka once. Returns False when no message was processed."""

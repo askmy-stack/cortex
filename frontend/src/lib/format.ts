@@ -40,3 +40,9 @@ export function truncate(text: string, max = 120): string {
   if (text.length <= max) return text;
   return `${text.slice(0, max).trim()}…`;
 }
+
+/** Shorten opaque ids for compact UI labels. */
+export function shortId(id: string, len = 8): string {
+  if (id.length <= len + 1) return id;
+  return `${id.slice(0, len)}…`;
+}

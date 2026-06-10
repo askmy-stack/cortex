@@ -2,19 +2,27 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 const apiBaseUrl = process.env.CORTEX_API_URL ?? "http://localhost:8000";
+const apiKey = process.env.CORTEX_API_KEY?.trim() || "";
 
 const server = new McpServer({
   name: "cortex",
   version: "0.1.0",
 });
 
+function apiHeaders() {
+  const headers = { "content-type": "application/json" };
+  if (apiKey) {
+    headers.authorization = `Bearer ${apiKey}`;
+  } else {
+    headers["x-cortex-roles"] = process.env.CORTEX_CALLER_ROLES ?? "authenticated";
+  }
+  return headers;
+}
+
 async function postJson(path, body) {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-cortex-roles": process.env.CORTEX_CALLER_ROLES ?? "authenticated",
-    },
+    headers: apiHeaders(),
     body: JSON.stringify(body),
   });
   if (!response.ok) {

@@ -1,9 +1,12 @@
 import type { DecisionResult } from "../../types";
 import { formatRelativeTime, formatSource } from "../../lib/format";
 
-type Props = { decisions: DecisionResult[] };
+type Props = {
+  decisions: DecisionResult[];
+  onSelect?: (decisionId: string) => void;
+};
 
-export function TimelineView({ decisions }: Props) {
+export function TimelineView({ decisions, onSelect }: Props) {
   const sorted = [...decisions].sort(
     (a, b) => new Date(b.extracted_at).getTime() - new Date(a.extracted_at).getTime(),
   );
@@ -19,9 +22,28 @@ export function TimelineView({ decisions }: Props) {
   return (
     <ol className="timeline">
       {sorted.map((d, i) => (
-        <li key={d.event_id} className="timeline__item fade-in" style={{ animationDelay: `${i * 60}ms` }}>
+        <li
+          key={d.event_id}
+          className="timeline__item fade-in"
+          style={{ animationDelay: `${i * 60}ms` }}
+        >
           <span className="timeline__dot" aria-hidden />
-          <article className="timeline__card">
+          <article
+            className={`timeline__card ${onSelect ? "timeline__card--interactive" : ""}`}
+            role={onSelect ? "button" : undefined}
+            tabIndex={onSelect ? 0 : undefined}
+            onClick={onSelect ? () => onSelect(d.event_id) : undefined}
+            onKeyDown={
+              onSelect
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(d.event_id);
+                    }
+                  }
+                : undefined
+            }
+          >
             <header className="timeline__header">
               <time dateTime={d.extracted_at}>{formatRelativeTime(d.extracted_at)}</time>
               <span className="badge badge--source">{formatSource(d.source)}</span>
@@ -31,6 +53,9 @@ export function TimelineView({ decisions }: Props) {
               <p className="timeline__meta">
                 Affects <strong>{d.affects.join(", ")}</strong>
               </p>
+            ) : null}
+            {onSelect ? (
+              <p className="timeline__action muted">Click to focus in relationship map →</p>
             ) : null}
           </article>
         </li>

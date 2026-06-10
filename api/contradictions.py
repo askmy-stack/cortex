@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from api.deps import caller_roles, memory
+from api.deps import RolesDep, memory
 
 log = structlog.get_logger(__name__)
 
@@ -26,15 +26,14 @@ class ContradictionItem(BaseModel):
 
 @router.get("/pending", response_model=list[ContradictionItem])
 async def list_pending_contradictions(
+    roles: RolesDep,
     workspace_id: str = Query(..., description="Cortex workspace identifier"),
-    x_cortex_roles: str | None = Header(default=None, alias="X-Cortex-Roles"),
 ) -> list[ContradictionItem]:
     """Return pending contradictions for human review.
 
     Uses the shared async Neo4j driver (see ``MemoryService``) — no per-request
     connection is opened. RBAC filtering is enforced inside the graph layer.
     """
-    roles = caller_roles(x_cortex_roles)
     try:
         rows = await memory().pending_contradictions(
             workspace_id=workspace_id,

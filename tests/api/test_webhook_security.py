@@ -33,8 +33,36 @@ def test_github_invalid_signature(mock_get: MagicMock) -> None:
             "X-Hub-Signature-256": "sha256=deadbeef",
         },
     )
-    assert response.status_code == 200
-    assert response.json()["status"] == "error"
+    # Forged/invalid signatures are rejected with 401 (not a 200 error body).
+    assert response.status_code == 401
+
+
+def test_github_missing_signature_with_secret_rejected() -> None:
+    from connectors.github.producer import GitHubConnector
+
+    conn = GitHubConnector(webhook_secret="topsecret")
+    # Secret configured but no signature supplied → must be rejected, not skipped.
+    result = conn.handle_event({"action": "opened"}, event_type="pull_request")
+    assert result["reason"] == "invalid_signature"
+
+
+def test_jira_signature_roundtrip() -> None:
+    from connectors.jira.producer import verify_jira_signature
+
+    secret = "jira-secret"
+    body = b'{"webhookEvent":"jira:issue_created"}'
+    good = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    assert verify_jira_signature(body, good, secret) is True
+    assert verify_jira_signature(body, "sha256=wrong", secret) is False
+    assert verify_jira_signature(body, "md5=nope", secret) is False
+
+
+def test_jira_missing_signature_with_secret_rejected() -> None:
+    from connectors.jira.producer import JiraConnector
+
+    conn = JiraConnector(webhook_secret="jira-secret")
+    result = conn.handle_event({"webhookEvent": "jira:issue_created"})
+    assert result["reason"] == "invalid_signature"
 
 
 @patch("api.webhooks._get_slack_connector")
