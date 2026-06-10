@@ -72,9 +72,13 @@ OPTIONAL MATCH (root)-[:SUPERSEDES*1..{depth}]->(prior:Decision)
   WHERE prior.workspace_id = $workspace_id
 OPTIONAL MATCH (successor:Decision)-[:SUPERSEDES*1..{depth}]->(root)
   WHERE successor.workspace_id = $workspace_id
-OPTIONAL MATCH (trigger:Decision {{id: root.triggered_by, workspace_id: $workspace_id}})
-WITH collect(DISTINCT root) + collect(DISTINCT prior) + collect(DISTINCT successor)
-     + CASE WHEN trigger IS NULL THEN [] ELSE [trigger] END AS all_nodes
+OPTIONAL MATCH (trigger:Decision {{workspace_id: $workspace_id}})
+  WHERE trigger.id = root.triggered_by
+WITH collect(DISTINCT root) AS roots,
+     collect(DISTINCT prior) AS priors,
+     collect(DISTINCT successor) AS successors,
+     collect(DISTINCT trigger) AS triggers
+WITH roots + priors + successors + [t IN triggers WHERE t IS NOT NULL] AS all_nodes
 UNWIND all_nodes AS d
 WITH DISTINCT d
 WHERE d.status <> 'archived'
