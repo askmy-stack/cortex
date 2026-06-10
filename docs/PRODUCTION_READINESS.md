@@ -8,7 +8,7 @@
 
 ## Executive summary
 
-Cortex is **merge-ready with caveats**. Backend test coverage is strong (270 tests, 82% coverage). Frontend builds cleanly with 6 Vitest tests and Playwright smoke coverage. Demo seed data expanded **5.5×** (2 → 11 base decisions, up to **110** at enterprise scale). Uncommitted UI changes (Assist rename, bug report section, light-mode removal) should be committed before opening the final PR.
+Cortex is **merge-ready with caveats**. Backend test coverage is strong (279 tests, 82% coverage). Frontend builds cleanly with 6 Vitest tests and Playwright smoke coverage. Demo seed data expanded **5.5×** (2 → 11 base decisions, up to **110** at enterprise scale). Uncommitted UI changes (Assist rename, bug report section, light-mode removal) should be committed before opening the final PR.
 
 **Recommendation:** Merge to `main` after one commit bundling pending frontend + validation changes, then run Neo4j-backed smoke in staging.
 
@@ -20,7 +20,7 @@ Cortex is **merge-ready with caveats**. Backend test coverage is strong (270 tes
 
 | Suite | Result | Count |
 |-------|--------|-------|
-| Python `pytest tests/` | ✅ Pass | 270 tests |
+| Python `pytest tests/` | ✅ Pass | 279 tests |
 | Coverage (`fail-under=70`) | ✅ Pass | 82.39% |
 | Frontend `npm test` (Vitest) | ✅ Pass | 6 tests |
 | Frontend `npm run build` | ✅ Pass | TypeScript + Vite |
@@ -103,10 +103,21 @@ curl -X POST localhost:8000/query -H "Content-Type: application/json" \
 
 ### Recommended follow-ups (post-merge)
 
+**Completed (gap-closure pass, 2026-06-10):**
+
+- [x] GitHub issue template — `.github/ISSUE_TEMPLATE/bug_report.yml`
+- [x] Playwright E2E — Assist panel, bug report section, lineage tab (`frontend/e2e/journeys.spec.ts`)
+- [x] Query benchmark script — `scripts/benchmark_query.py` + `tests/scripts/test_benchmark_query.py`
+- [x] Memory resilience tests — `tests/api/test_memory_resilience.py` (mocked Redis/Neo4j degradation)
+
+**Still open:**
+
 - Rename internal CSS `copilot-*` classes → `assist-*` (cosmetic)
-- Add GitHub issue template under `.github/ISSUE_TEMPLATE/`
-- Expand Playwright to cover Assist panel + bug report section
 - Consider `scripts/` → `tools/` consolidation (low priority)
+- **Load testing** — k6/Locust for concurrent `/query` (not blocking MVP)
+- **Live staging validation** — Neo4j + Redis + Kafka stack, enterprise seed, retrieval latency
+- **Accessibility** — automated axe audit (manual landmarks covered in E2E)
+- **Observability** — APM/metrics wiring beyond structlog JSON
 
 ---
 
@@ -147,7 +158,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 
 | Dimension | Rating | Evidence |
 |-----------|--------|----------|
-| Backend API | 🟢 Ready | 270 tests, health endpoint, RBAC at graph layer |
+| Backend API | 🟢 Ready | 279 tests, health endpoint, RBAC at graph layer |
 | Graph / Neo4j | 🟢 Ready | Migrations, writer, query service, lineage fix |
 | Pipeline | 🟡 Staging | Unit + integration mocked; needs live Kafka demo |
 | Frontend | 🟢 Ready | Build passes, responsive CSS, mobile nav |
@@ -184,7 +195,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 
 ## 8. Final merge checklist
 
-- [x] All Python tests pass (270)
+- [x] All Python tests pass (279)
 - [x] Coverage ≥ 70%
 - [x] Frontend build + unit tests pass
 - [x] Demo seed 5×+ expansion with scale presets
@@ -216,7 +227,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 
 ### Test plan
 
-- [ ] `pytest tests/` — 270 passed
+- [x] `pytest tests/` — 279 passed
 - [ ] `cd frontend && npm test && npm run build`
 - [ ] `python scripts/seed_demo.py --dry-run --scale enterprise`
 - [ ] `npm run test:e2e` (with API + frontend dev servers)
