@@ -6,8 +6,9 @@ verification by three independent verifiers before graph write. Majority vote
 
 Decision: D-006 — Bayesian trust scoring with CMVK majority voting.
 
-Production verifiers will call independent LLMs; v0.1 uses deterministic
-heuristic checks so dev/test paths incur zero API cost.
+Production: set ``CORTEX_CMVK_BACKEND=openai`` or ``ollama`` for three LLM
+verifiers (see ``scoring/cmvk_llm.py``). Default ``heuristic`` keeps dev/test
+paths at zero API cost.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from shared.models import IMPORTANCE_FULL, DecisionEvent
 
 log = structlog.get_logger(__name__)
 
-CMVK_VERSION = "0.1.0"
+CMVK_VERSION = "0.2.0"
 CMVK_VERIFIER_COUNT = 3
 CMVK_MAJORITY = 2
 
@@ -96,6 +97,19 @@ def default_heuristic_verifiers() -> list[HeuristicDecisionVerifier]:
     ]
 
 
+def build_default_verifiers() -> list[DecisionVerifier]:
+    """Select verifier set from ``CORTEX_CMVK_BACKEND`` (default: heuristic)."""
+    backend = os.environ.get("CORTEX_CMVK_BACKEND", "heuristic").lower()
+    if backend == "heuristic":
+        return default_heuristic_verifiers()
+    if backend in {"openai", "ollama"}:
+        from scoring.cmvk_llm import build_llm_verifiers
+
+        return build_llm_verifiers(backend)
+    log.warning("cmvk.unknown_backend", backend=backend, fallback="heuristic")
+    return default_heuristic_verifiers()
+
+
 class CrossModelVerificationKernel:
     """Runs CMVK majority voting when importance exceeds the high-stakes threshold."""
 
@@ -105,7 +119,7 @@ class CrossModelVerificationKernel:
         *,
         enabled: bool | None = None,
     ) -> None:
-        self._verifiers = verifiers or default_heuristic_verifiers()
+        self._verifiers = verifiers or build_default_verifiers()
         if enabled is None:
             enabled = os.environ.get("CORTEX_CMVK_ENABLED", "true").lower() in {
                 "1",

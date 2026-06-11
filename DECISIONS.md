@@ -23,6 +23,14 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ## ACTIVE INSTRUCTIONS
 
+### 2026-06-10 — LLM-backed CMVK verifiers (production)
+Priority: HIGH
+Status: DONE — `CORTEX_CMVK_BACKEND=openai|ollama` (2026-06-10)
+Detail:
+- `scoring/cmvk_llm.py` — three independent LLM verifier personas (structure, provenance, stakes)
+- `build_default_verifiers()` selects heuristic (default) or LLM backend via env
+- Tests: `tests/scoring/test_cmvk_llm.py`
+
 ### 2026-06-10 — GDPR erasure API route (admin-only)
 Priority: HIGH
 Status: DONE — `POST /gdpr/erase` (2026-06-10)
