@@ -507,3 +507,24 @@
 1. Merge PR #14 after CI green
 2. LLM-backed CMVK verifiers (production)
 3. Phase 6: dashboard polish + demo video
+
+---
+
+## Session — 2026-06-10 — LLM-backed CMVK verifiers
+**Duration:** ~25m
+**Phase:** Phase 4 completion — production CMVK
+
+### Built
+- **`scoring/cmvk_llm.py`** — `LLMDecisionVerifier` with OpenAI function calling + Ollama JSON mode; three personas (structure, provenance, stakes)
+- **`scoring/cmvk.py`** — `build_default_verifiers()` via `CORTEX_CMVK_BACKEND`; CMVK v0.2.0
+- **`tests/scoring/test_cmvk_llm.py`** — factory selection, OpenAI mock, kernel majority with LLM verifiers
+- **`.env.example`** — CMVK backend and model env vars documented
+
+### State at end
+- Branch **`feature/cmvk-llm-verifiers`** — committed `a73a853`, **PR #15** open
+- **350 passed** (full suite, `--no-cov`)
+
+### Next session starts with
+1. Merge PR #15 after CI green
+2. Phase 6: dashboard polish + demo video
+3. Staging smoke with `CORTEX_CMVK_BACKEND=openai`
