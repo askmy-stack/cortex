@@ -217,6 +217,24 @@ This brings up Kafka, Neo4j, Redis, Postgres, applies graph migrations, writes t
 
 **Recording a video or GIF for the README:** see [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md). **Validating real webhooks (Slack / GitHub / Jira):** [docs/CONNECTOR_VALIDATION.md](docs/CONNECTOR_VALIDATION.md).
 
+### Deploy preview (Vercel dashboard)
+
+Host the **dashboard only** on Vercel (`frontend/` as root directory). The API and pipeline worker run on Docker, Railway, or similar — do not deploy the repo root as FastAPI on Vercel (full `uv.lock` exceeds Lambda size limits).
+
+| Step | Action |
+|------|--------|
+| 1 | Deploy `frontend/` with `CORTEX_API_ORIGIN=https://your-api.example.com` |
+| 2 | Build runs `scripts/vercel-api-rewrites.mjs` — same-origin `/query` proxy |
+| 3 | Avoid `VITE_API_URL` pointing at tunnel URLs (511 errors) |
+
+Full guide: [docs/DEPLOY.md](docs/DEPLOY.md). **Dual workspaces** (synthetic `local-dev` vs real OSS imports): [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
+
+```bash
+make seed-dev                    # local-dev synthetic decisions
+make import-oss                  # dry-run GitHub PR import preview
+make verify-dual                 # compare queries across workspaces
+```
+
 ### Context API (REST)
 
 | Method | Path | Purpose |

@@ -45,6 +45,13 @@ export async function parseHttpError(response: Response): Promise<string> {
     const base = "Service unavailable (503). Neo4j or another dependency may be down.";
     return detail ? `${base} ${detail.slice(0, 120)}` : base;
   }
+  if (response.status === 511 || detail.includes("Tunnel website ahead")) {
+    return (
+      "API tunnel blocked the request (511). The dashboard must use same-origin /query via " +
+      "Vercel rewrites (CORTEX_API_ORIGIN), not a localtunnel URL in VITE_API_URL. " +
+      "See README deploy notes."
+    );
+  }
   if (!detail) return `Request failed (${status})`;
   return `Request failed (${status}): ${detail.slice(0, 200)}`;
 }

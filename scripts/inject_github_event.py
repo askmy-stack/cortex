@@ -31,20 +31,31 @@ DEFAULT_BODY = (
 DEFAULT_TITLE = "Decision: migrate payments to CockroachDB"
 
 
-def build_merged_pr_payload(*, title: str, body: str, repo: str) -> dict:
+def build_merged_pr_payload(
+    *,
+    title: str,
+    body: str,
+    repo: str,
+    number: int = 42,
+    user_login: str = "priya",
+    updated_at: str = "2026-06-10T18:00:00Z",
+    created_at: str = "2026-06-10T17:00:00Z",
+    head_ref: str = "feature/decision",
+) -> dict:
     """Build a GitHub ``pull_request`` closed+merged webhook payload."""
     return {
         "action": "closed",
         "pull_request": {
-            "number": 42,
+            "number": number,
             "title": title,
-            "body": body,
+            "body": body or "",
             "merged": True,
-            "user": {"login": "priya"},
+            "merged_at": updated_at,
+            "user": {"login": user_login},
             "base": {"ref": "main"},
-            "head": {"ref": "feature/cockroachdb"},
-            "updated_at": "2026-06-10T18:00:00Z",
-            "created_at": "2026-06-10T17:00:00Z",
+            "head": {"ref": head_ref},
+            "updated_at": updated_at,
+            "created_at": created_at,
             "labels": [],
             "requested_reviewers": [],
         },

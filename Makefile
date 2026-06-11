@@ -1,4 +1,4 @@
-.PHONY: demo demo-dry-run test ci stack init-kafka pipeline-restart pipeline-local verify-pipeline verify-github verify-jira verify-linear verify-connectors
+.PHONY: demo demo-dry-run test ci stack init-kafka pipeline-restart pipeline-local verify-pipeline verify-github verify-jira verify-linear verify-connectors seed-dev import-oss verify-dual
 
 # Local portfolio demo: Docker infra + migrations + seed + API + worker + frontend.
 demo:
@@ -45,3 +45,13 @@ verify-linear:
 	python scripts/verify_slack_pipeline.py --source linear --timeout 120
 
 verify-connectors: verify-pipeline verify-github verify-jira verify-linear
+
+# Dual-workspace: synthetic dev seed vs OSS import smoke.
+seed-dev:
+	uv run python scripts/seed_demo.py --workspace local-dev
+
+import-oss:
+	uv run python scripts/import_github_org.py --org tiangolo --repo fastapi --dry-run
+
+verify-dual:
+	uv run python scripts/dual_workspace_smoke.py --workspaces local-dev,oss-tiangolo-fastapi

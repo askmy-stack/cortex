@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { useApp } from "../../context/AppContext";
 import { hasApiKeyConfigured } from "../../api/client";
 
-const PRESETS = ["local-dev", "acme-demo"] as const;
+const PRESETS = ["local-dev", "oss-tiangolo-fastapi", "oss-adr"] as const;
 
 export function WorkspaceBar() {
   const { workspaceId, setWorkspaceId, apiKey, setApiKey, saveApiKey } = useApp();
