@@ -1,8 +1,29 @@
 # Cortex
 
+[![CI](https://github.com/askmy-stack/cortex/actions/workflows/ci.yml/badge.svg)](https://github.com/askmy-stack/cortex/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![MCP](https://img.shields.io/badge/MCP-native-teal.svg)](mcp/)
+
 **The organizational memory operating system for AI-native companies.**
 
 > Give every AI agent in your organization the same context a senior engineer has — and keep it current as your organization evolves.
+
+**Thesis:** AI tools are stateless. Organizations are not. Every agent starting from zero is a **memory infrastructure failure** — not a model failure.
+
+<p align="center">
+  <img src="docs/assets/cortex-memory-fabric.gif" alt="Cortex memory fabric: Slack and GitHub events flow through Kafka extraction into Neo4j and Redis, then inject decision context into agents" width="920" />
+</p>
+
+<p align="center">
+  <em>Capture decisions from every tool → structure in a knowledge graph → actively inject context at inference time via MCP.</em>
+</p>
+
+| In 3 minutes | Command |
+|---|---|
+| **Run the demo** | `make demo` → [localhost:3000](http://localhost:3000) |
+| **Ask a question** | Workspace `local-dev` → *Why CockroachDB for payments?* |
+| **Wire an agent** | Add the MCP block below — `cortex_query`, `cortex_inject`, `cortex_remember` |
 
 ---
 
@@ -79,6 +100,30 @@ When any agent touches the payments service, Cortex enriches its context automat
 | **Coverage scoring** | Per-domain completeness estimate — agents know when memory is thin |
 | **RBAC** | Graph-level access control — contractors don't see salary decisions |
 | **Outcome tracking** | Links decisions to real metrics — memory becomes self-correcting |
+| **GDPR erasure** | Cascade delete with audit trail; query cache invalidated per workspace |
+
+---
+
+## Production hardening (launch-ready)
+
+These behaviors matter when Cortex runs behind auth in preview or production:
+
+| Concern | Behavior |
+|---|---|
+| **GDPR erasure** | `POST /gdpr/erase` bumps a per-workspace Redis cache epoch — stale PII cannot be served from `/query` for up to 60s |
+| **Dashboard proxy** | nginx on `:3000` forwards `/gdpr` (and `/query`, `/inject`, …) to the API — same-origin demos work |
+| **Demo smoke test** | `scripts/demo.sh` sources `.env` and sends `Authorization` when `CORTEX_DEMO_API_KEY` or `CORTEX_API_KEYS` is set |
+| **Pipeline retries** | Transient Neo4j errors do not commit Kafka offsets or land in DLQ — messages are redelivered |
+| **CMVK fail-fast** | `CORTEX_CMVK_BACKEND=openai\|ollama` validates credentials/reachability at worker startup |
+
+```bash
+# Preview / staging .env snippet
+CORTEX_API_KEYS=preview-key:admin;authenticated
+CORTEX_DEMO_API_KEY=preview-key
+CORTEX_CMVK_BACKEND=heuristic   # zero-cost local demo; use openai + OPENAI_API_KEY in prod
+```
+
+Regenerate the README animation: `python scripts/generate_readme_demo_gif.py` → `docs/assets/cortex-memory-fabric.gif`
 
 ---
 
@@ -164,6 +209,10 @@ make demo              # or: bash scripts/demo.sh
 
 This brings up Kafka, Neo4j, Redis, Postgres, applies graph migrations, writes two demo `Decision` nodes (CockroachDB migration story + Redis session cache), starts the API, pipeline worker, and dashboard, then runs a sample `POST /query`. Open [http://localhost:3000](http://localhost:3000) and use **Ask** with workspace `local-dev` and a question like `Why CockroachDB for payments?`.
 
+**API auth enabled?** Set `CORTEX_API_KEYS` in `.env` (format: `key:admin;authenticated`) and optionally `CORTEX_DEMO_API_KEY` to the same key so `make demo` smoke curl authenticates. The dashboard nginx proxy forwards `/gdpr` to the API for same-origin GDPR erasure from port 3000.
+
+**CMVK in production:** Default `CORTEX_CMVK_BACKEND=heuristic` needs no LLM. For `openai` or `ollama`, set `OPENAI_API_KEY` or run Ollama — the pipeline worker fails fast at startup if the backend is misconfigured (avoids silently quarantining all high-stakes writes).
+
 **Dashboard looks stale?** The UI is served from a Docker image on port **3000**. Rebuild with `docker compose --profile api --profile frontend build frontend && docker compose --profile api --profile frontend up -d --force-recreate frontend`, then hard-refresh the browser (`Cmd+Shift+R`). For hot reload during UI work, run `cd frontend && npm run dev` → [http://localhost:5173](http://localhost:5173) (dev server uses **5173** so it does not clash with Docker).
 
 **Recording a video or GIF for the README:** see [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md). **Validating real webhooks (Slack / GitHub / Jira):** [docs/CONNECTOR_VALIDATION.md](docs/CONNECTOR_VALIDATION.md).
@@ -183,7 +232,7 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable distributed tracing (OpenTelemetry O
 | `GET` | `/decisions/{id}/chain` | SUPERSEDES / trigger lineage |
 | `GET` | `/decisions/{id}/conflicts` | Contradiction preview on shared systems |
 | `POST` | `/remember` | Submit explicit memory → Kafka → extractor → graph |
-| `POST` | `/gdpr/erase` | GDPR Right to Erasure — cascade delete subject memory (`admin` / `gdpr_officer` / `legal`) |
+| `POST` | `/gdpr/erase` | GDPR Right to Erasure — cascade delete subject memory (`admin` / `gdpr_officer` / `legal`); invalidates per-workspace query cache |
 | `POST` | `/webhooks/slack`, `/github`, `/jira`, `/linear` | Connector ingress → Kafka |
 
 Use `docker compose --profile api up` to build the API and pipeline worker, or run `uvicorn api.main:app --reload` from the repo root with services in `.env`.
@@ -235,11 +284,28 @@ New engineer opens Cursor. Asks:
 
 > *"Why does the payments service use CockroachDB instead of Postgres?"*
 
-Without Cortex: the agent guesses, or says it doesn't know.
+| Without Cortex | With Cortex |
+|---|---|
+| Agent guesses or says *"I don't know"* | Returns incident #247, decision owners, tradeoffs, migration PR, edge cases since |
+| Slack archaeology, stale Confluence | Structured `DecisionEvent` from the live graph |
+| Every session starts at zero | MCP `cortex_inject` pushes context **before** inference |
 
-With Cortex: the agent returns the incident that triggered the migration, who decided it, why, the tradeoffs that were discussed, the migration PR, and known edge cases discovered since.
+Full context. ~3 seconds. No archaeology.
 
-Full context. 3 seconds. No Slack archaeology.
+```mermaid
+sequenceDiagram
+    participant Agent as Cursor / Claude
+    participant MCP as Cortex MCP
+    participant API as Context API
+    participant Graph as Neo4j + Redis
+
+    Agent->>MCP: cortex_query("CockroachDB payments")
+    MCP->>API: POST /query
+    API->>Graph: RBAC-filtered search + cache
+    Graph-->>API: decisions + lineage
+    API-->>MCP: ranked memory
+    MCP-->>Agent: incident, owners, rationale, systems
+```
 
 ---
 
@@ -309,7 +375,7 @@ cortex/
 | Phase 4 | Importance + trust scoring + graph RBAC | ✅ Shipped |
 | Phase 5 | Contradiction detector + decay engine | ✅ Shipped |
 | Phase 6 | React dashboard (Ask, memory map, guide, agent inject) | ✅ Shipped |
-| Phase 7 | Demo video + open-source launch polish | 🔄 In progress |
+| Phase 7 | Demo video + open-source launch polish | 🔄 README GIF + pre-launch hardening shipped |
 | Phase 8 | Outcome tracking + coverage scoring | ⏳ Post-launch |
 | Phase 9 | Elicitation bot (implicit knowledge) | ⏳ Post-launch |
 | Phase 10 | Federated cross-org memory | ⏳ v2 |

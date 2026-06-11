@@ -12,6 +12,7 @@ from typing import Literal
 import structlog
 
 from scoring.cmvk import CrossModelVerificationKernel
+from scoring.cmvk_llm import validate_cmvk_backend
 from scoring.importance import ImportanceScorer
 from scoring.trust_scorer import TrustScorer, is_writable
 from shared.models import IMPORTANCE_DISCARD, IMPORTANCE_FULL, DecisionEvent
@@ -61,6 +62,8 @@ class DecisionScoringPipeline:
     ) -> None:
         self._importance = importance or ImportanceScorer()
         self._trust = trust or TrustScorer()
+        if cmvk is None:
+            validate_cmvk_backend()
         self._cmvk = cmvk or CrossModelVerificationKernel()
 
     def score(self, decision: DecisionEvent) -> DecisionEvent:

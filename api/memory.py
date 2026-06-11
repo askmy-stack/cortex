@@ -17,6 +17,8 @@ from scoring.trust_scorer import is_injectable
 
 log = structlog.get_logger(__name__)
 
+_WORKSPACE_CACHE_EPOCH_PREFIX = "cortex:ws:"
+
 
 class MemoryService:
     """Coordinates graph reads with Redis caching and optional semantic search."""
@@ -46,10 +48,28 @@ class MemoryService:
         except Exception:
             return None
 
-    @staticmethod
-    def _cache_key(prefix: str, payload: dict[str, Any]) -> str:
+    def _workspace_cache_epoch(self, workspace_id: str) -> int:
+        """Per-workspace cache generation — bumped on GDPR erasure."""
+        if self._redis is None:
+            return 0
+        key = f"{_WORKSPACE_CACHE_EPOCH_PREFIX}{workspace_id}:cache_epoch"
+        raw = self._redis.get(key)
+        return int(raw) if raw else 0
+
+    def invalidate_workspace_cache(self, workspace_id: str) -> None:
+        """Drop cached query results for a workspace (e.g. after GDPR erasure)."""
+        if self._redis is None:
+            return
+        key = f"{_WORKSPACE_CACHE_EPOCH_PREFIX}{workspace_id}:cache_epoch"
+        self._redis.incr(key)
+        log.info("memory.cache.invalidated", workspace_id=workspace_id)
+
+    def _cache_key(self, prefix: str, payload: dict[str, Any]) -> str:
+        workspace_id = str(payload.get("workspace_id", ""))
+        epoch = self._workspace_cache_epoch(workspace_id) if workspace_id else 0
+        keyed = {**payload, "cache_epoch": epoch}
         digest = hashlib.sha256(
-            json.dumps(payload, sort_keys=True).encode("utf-8"),
+            json.dumps(keyed, sort_keys=True).encode("utf-8"),
         ).hexdigest()
         return f"cortex:{prefix}:{digest}"
 
@@ -238,6 +258,7 @@ class MemoryService:
             caller_roles=caller_roles,
             reason=reason,
         )
+        self.invalidate_workspace_cache(workspace_id)
         return {
             "audit_id": result.audit_id,
             "workspace_id": result.workspace_id,

@@ -14,6 +14,7 @@ from scoring.cmvk_llm import (
     _call_openai_verify,
     build_llm_verifiers,
     decision_payload,
+    validate_cmvk_backend,
 )
 from shared.models import IMPORTANCE_FULL, DecisionEvent, Provenance
 
@@ -54,6 +55,21 @@ def test_decision_payload_includes_review_fields() -> None:
     assert payload["importance_score"] > IMPORTANCE_FULL
 
 
+def test_validate_cmvk_backend_openai_requires_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+        validate_cmvk_backend("openai")
+
+
+def test_validate_cmvk_backend_heuristic_is_noop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    validate_cmvk_backend("heuristic")
+
+
 def test_build_default_verifiers_heuristic_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -67,6 +83,7 @@ def test_build_default_verifiers_openai_backend(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("CORTEX_CMVK_BACKEND", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     verifiers = build_default_verifiers()
     assert [v.verifier_id for v in verifiers] == [
         "cmvk-llm-structure",

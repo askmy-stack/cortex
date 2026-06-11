@@ -23,6 +23,26 @@ from shared.models import RawEvent
 
 log = structlog.get_logger(__name__)
 
+_TRANSIENT_GRAPH_ERRORS: tuple[type[BaseException], ...] = ()
+
+
+def _load_transient_graph_errors() -> tuple[type[BaseException], ...]:
+    """Neo4j driver errors that should retry without committing the Kafka offset."""
+    global _TRANSIENT_GRAPH_ERRORS
+    if _TRANSIENT_GRAPH_ERRORS:
+        return _TRANSIENT_GRAPH_ERRORS
+    try:
+        from neo4j.exceptions import Neo4jError, ServiceUnavailable, SessionExpired
+    except ImportError:
+        _TRANSIENT_GRAPH_ERRORS = ()
+    else:
+        _TRANSIENT_GRAPH_ERRORS = (Neo4jError, ServiceUnavailable, SessionExpired)
+    return _TRANSIENT_GRAPH_ERRORS
+
+
+def _is_transient_graph_error(exc: BaseException) -> bool:
+    return isinstance(exc, _load_transient_graph_errors())
+
 RAW_TOPICS = [
     "cortex.raw.slack.messages",
     "cortex.raw.github.events",
@@ -250,6 +270,13 @@ class ExtractionWorker:
         try:
             self.process_raw_event(raw_event)
         except Exception as exc:  # noqa: BLE001 - poison-pill protection for the loop
+            if _is_transient_graph_error(exc):
+                log.warning(
+                    "pipeline.write.transient",
+                    event_id=raw_event.event_id,
+                    error=str(exc),
+                )
+                raise
             log.error(
                 "pipeline.process.failed",
                 event_id=raw_event.event_id,
@@ -262,7 +289,12 @@ class ExtractionWorker:
         message = self._consumer.poll(timeout)
         if message is None:
             return False
-        self._handle_message(message)
+        try:
+            self._handle_message(message)
+        except Exception as exc:
+            if _is_transient_graph_error(exc):
+                return False
+            raise
         self._consumer.commit(asynchronous=False)
         return True
 

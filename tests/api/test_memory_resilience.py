@@ -50,7 +50,13 @@ async def test_query_works_without_redis() -> None:
 async def test_query_uses_redis_cache_hit() -> None:
     svc = MemoryService()
     redis = MagicMock()
-    redis.get.return_value = json.dumps([_SAMPLE_ROW])
+
+    def _redis_get(key: str) -> str | None:
+        if key.endswith(":cache_epoch"):
+            return "0"
+        return json.dumps([_SAMPLE_ROW])
+
+    redis.get.side_effect = _redis_get
     svc._redis = redis
     svc._graph.search_decisions = AsyncMock()
 
@@ -105,3 +111,61 @@ async def test_neo4j_health_degraded() -> None:
     svc = MemoryService()
     svc._graph.health = AsyncMock(return_value=False)
     assert await svc.neo4j_health() == "unreachable"
+
+
+def test_invalidate_workspace_cache_bumps_epoch() -> None:
+    svc = MemoryService()
+    redis = MagicMock()
+    redis.get.return_value = "2"
+    svc._redis = redis
+
+    svc.invalidate_workspace_cache("ws-1")
+
+    redis.incr.assert_called_once_with("cortex:ws:ws-1:cache_epoch")
+
+
+def test_cache_key_changes_after_invalidation() -> None:
+    svc = MemoryService()
+    redis = MagicMock()
+    redis.get.side_effect = ["0", "1"]
+    svc._redis = redis
+    payload = {
+        "query": "payments",
+        "workspace_id": "ws-1",
+        "limit": 5,
+        "min_importance": 0.0,
+        "min_trust": 0.0,
+        "event_types": [],
+        "caller_roles": ["authenticated"],
+    }
+
+    key_before = svc._cache_key("query", payload)
+    svc.invalidate_workspace_cache("ws-1")
+    key_after = svc._cache_key("query", payload)
+
+    assert key_before != key_after
+
+
+@pytest.mark.asyncio
+async def test_erase_gdpr_subject_invalidates_workspace_cache() -> None:
+    svc = MemoryService()
+    redis = MagicMock()
+    svc._redis = redis
+    svc._gdpr.erase_subject = MagicMock(
+        return_value=MagicMock(
+            audit_id="audit-1",
+            workspace_id="ws-1",
+            person_id="alice@co.com",
+            decisions_deleted=3,
+            requested_by="admin@co.com",
+        ),
+    )
+
+    await svc.erase_gdpr_subject(
+        workspace_id="ws-1",
+        person_id="alice@co.com",
+        requested_by="admin@co.com",
+        caller_roles=["admin"],
+    )
+
+    redis.incr.assert_called_once_with("cortex:ws:ws-1:cache_epoch")

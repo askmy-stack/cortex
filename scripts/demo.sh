@@ -12,6 +12,12 @@ if [[ ! -f .env ]]; then
   cp .env.example .env
 fi
 
+# Load API keys and workspace overrides for smoke curl (CORTEX_API_KEYS, CORTEX_DEMO_API_KEY).
+set -a
+# shellcheck source=/dev/null
+source .env
+set +a
+
 NEO4J_USER="${NEO4J_USER:-neo4j}"
 NEO4J_PASSWORD="${NEO4J_PASSWORD:-cortex_local}"
 WORKSPACE="${CORTEX_WORKSPACE_ID:-local-dev}"
@@ -54,8 +60,20 @@ for _ in $(seq 1 45); do
 done
 
 echo "==> Smoke: POST /query (CockroachDB + payments)"
+SMOKE_AUTH_HEADERS=()
+if [[ -n "${CORTEX_DEMO_API_KEY:-}" ]]; then
+  SMOKE_AUTH_HEADERS=(-H "Authorization: Bearer ${CORTEX_DEMO_API_KEY}")
+elif [[ -n "${CORTEX_API_KEYS:-}" ]]; then
+  # First comma-separated entry: key:role;role — use key when demo key unset.
+  DEMO_KEY="${CORTEX_API_KEYS%%,*}"
+  DEMO_KEY="${DEMO_KEY%%:*}"
+  if [[ -n "$DEMO_KEY" ]]; then
+    SMOKE_AUTH_HEADERS=(-H "Authorization: Bearer ${DEMO_KEY}")
+  fi
+fi
 curl -sf "http://localhost:8000/query" \
   -H "Content-Type: application/json" \
+  "${SMOKE_AUTH_HEADERS[@]}" \
   -d "{\"query\":\"Why CockroachDB for payments?\",\"workspace_id\":\"$WORKSPACE\",\"limit\":5}" \
   | head -c 800
 echo
