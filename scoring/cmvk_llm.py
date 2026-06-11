@@ -238,8 +238,42 @@ class LLMDecisionVerifier:
         return VerifierVote(self.verifier_id, approved, rationale[:500])
 
 
+def validate_cmvk_backend(backend: str | None = None) -> None:
+    """Fail fast when LLM CMVK is enabled but the backend is unreachable.
+
+    Without this check, every verifier returns ``approved=False`` on API errors,
+    CMVK majority fails, and high-stakes writes are silently quarantined.
+    """
+    resolved = (backend or os.environ.get("CORTEX_CMVK_BACKEND", "heuristic")).lower()
+    if resolved == "heuristic":
+        return
+    if resolved not in {"openai", "ollama"}:
+        return
+
+    if resolved == "openai":
+        if not os.environ.get("OPENAI_API_KEY", "").strip():
+            raise ValueError(
+                "CORTEX_CMVK_BACKEND=openai but OPENAI_API_KEY is unset. "
+                "Set OPENAI_API_KEY or use CORTEX_CMVK_BACKEND=heuristic for local demo."
+            )
+        return
+
+    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+    try:
+        import urllib.error
+        import urllib.request
+
+        urllib.request.urlopen(f"{base_url}/api/tags", timeout=3)
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise ValueError(
+            f"CORTEX_CMVK_BACKEND=ollama but Ollama is unreachable at {base_url}: {exc}. "
+            "Start Ollama or set CORTEX_CMVK_BACKEND=heuristic."
+        ) from exc
+
+
 def build_llm_verifiers(backend: str) -> list[DecisionVerifier]:
     """Construct three independent LLM verifiers for the given backend."""
+    validate_cmvk_backend(backend)
     if backend == "openai":
         model = os.environ.get("CORTEX_CMVK_OPENAI_MODEL", "gpt-4o-mini")
         ollama_base_url = ""

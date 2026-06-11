@@ -5,7 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from pipeline.extraction_worker import ExtractionWorker, _BoundedSeenCache
+import pytest
+
+from pipeline.extraction_worker import (
+    ExtractionWorker,
+    _BoundedSeenCache,
+    _is_transient_graph_error,
+)
 from shared.models import DecisionEvent, Provenance, RawEvent
 
 NOW = datetime(2026, 5, 11, 12, 0, 0, tzinfo=UTC)
@@ -141,6 +147,38 @@ def test_bounded_seen_cache_evicts_lru() -> None:
     assert len(cache) == 3
 
 
+@patch("pipeline.extraction_worker.GraphWriter")
+@patch("pipeline.extraction_worker.DecisionScoringPipeline")
+@patch("pipeline.extraction_worker.DecisionExtractor")
+@patch("pipeline.extraction_worker.Producer")
+@patch("pipeline.extraction_worker.Consumer")
+def test_run_once_skips_commit_on_transient_neo4j_error(
+    consumer_cls: MagicMock,
+    producer_cls: MagicMock,
+    extractor_cls: MagicMock,
+    scoring_cls: MagicMock,
+    writer_cls: MagicMock,
+) -> None:
+    try:
+        from neo4j.exceptions import ServiceUnavailable
+    except ImportError:
+        pytest.skip("neo4j driver not installed")
+
+    message = MagicMock()
+    message.error.return_value = None
+    message.value.return_value = _raw_event().model_dump_json().encode("utf-8")
+    consumer = consumer_cls.return_value
+    consumer.poll.return_value = message
+
+    extractor_cls.return_value.extract.return_value = _decision()
+    scoring_cls.return_value.score.side_effect = lambda decision: decision
+    writer_cls.return_value.write.side_effect = ServiceUnavailable("neo4j restarting")
+
+    worker = ExtractionWorker(bootstrap_servers="localhost:9092")
+    assert worker.run_once() is False
+    consumer.commit.assert_not_called()
+
+
 def test_bounded_seen_cache_promotes_on_hit() -> None:
     """``__contains__`` should mark the key as most-recently-used."""
     cache = _BoundedSeenCache(capacity=2)
@@ -151,3 +189,12 @@ def test_bounded_seen_cache_promotes_on_hit() -> None:
     assert "a" in cache
     assert "b" not in cache
     assert "c" in cache
+
+
+def test_is_transient_graph_error_recognizes_neo4j_service_unavailable() -> None:
+    try:
+        from neo4j.exceptions import ServiceUnavailable
+    except ImportError:
+        pytest.skip("neo4j driver not installed")
+    assert _is_transient_graph_error(ServiceUnavailable("down"))
+    assert not _is_transient_graph_error(RuntimeError("other"))
