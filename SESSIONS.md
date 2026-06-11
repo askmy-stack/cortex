@@ -521,11 +521,10 @@
 - **`.env.example`** — CMVK backend and model env vars documented
 
 ### State at end
-- Branch **`feature/cmvk-llm-verifiers`** from `main` (PR #14 merged)
+- Branch **`feature/cmvk-llm-verifiers`** — committed `a73a853`, **PR #15** open
 - **350 passed** (full suite, `--no-cov`)
-- Changes uncommitted
 
 ### Next session starts with
-1. Commit + PR for CMVK LLM verifiers
+1. Merge PR #15 after CI green
 2. Phase 6: dashboard polish + demo video
 3. Staging smoke with `CORTEX_CMVK_BACKEND=openai`
