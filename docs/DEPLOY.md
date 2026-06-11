@@ -15,7 +15,18 @@ Cortex is a **multi-service stack** (Kafka, Neo4j, Redis, API, pipeline worker, 
 
 ## Vercel (frontend)
 
-**Project settings**
+**Do not deploy the Python API on Vercel.** If the build log shows `Using Python 3.12 from pyproject.toml` or installs `uv.lock`, Vercel is treating the repo as FastAPI — that bundle (~5 GB) exceeds Lambda limits.
+
+**Fix (pick one):**
+
+| Approach | Settings |
+|----------|----------|
+| **Recommended** | Project Settings → General → **Root Directory** → `frontend` → Save → Redeploy |
+| **Repo root** | Keep Root Directory `.` — root `vercel.json` forces `framework: vite` and builds `frontend/dist` only (no Python) |
+
+After changing Root Directory, clear the Framework Preset override if it still says **FastAPI** — it should be **Vite** or **Other**.
+
+**Project settings (Root Directory = `frontend`)**
 
 - Root Directory: `frontend`
 - Framework: Vite

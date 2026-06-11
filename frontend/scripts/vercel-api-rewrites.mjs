@@ -3,19 +3,20 @@
  * Inject Vercel rewrites so the dashboard calls /query on the same origin.
  * Vercel proxies to CORTEX_API_ORIGIN server-side — avoids localtunnel 511
  * interstitials and CORS when the API runs on your laptop via cloudflared.
+ *
+ * Updates frontend/vercel.json (Root Directory = frontend) and repo-root
+ * vercel.json (Root Directory = .) when the latter exists.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const configPath = join(root, "vercel.json");
+const frontendRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = join(frontendRoot, "..");
 
 const origin = String(process.env.CORTEX_API_ORIGIN ?? "")
   .trim()
   .replace(/\/$/, "");
-
-const base = JSON.parse(readFileSync(configPath, "utf8"));
 
 const apiRewrites = origin
   ? [
@@ -33,14 +34,28 @@ const apiRewrites = origin
     ]
   : [];
 
-base.rewrites = [
-  ...apiRewrites,
-  { source: "/((?!assets/).*)", destination: "/index.html" },
-];
+const spaFallback = { source: "/((?!assets/).*)", destination: "/index.html" };
 
-writeFileSync(configPath, `${JSON.stringify(base, null, 2)}\n`);
+function applyRewrites(configPath) {
+  const base = JSON.parse(readFileSync(configPath, "utf8"));
+  base.rewrites = [...apiRewrites, spaFallback];
+  writeFileSync(configPath, `${JSON.stringify(base, null, 2)}\n`);
+}
+
+const targets = [join(frontendRoot, "vercel.json")];
+const rootConfig = join(repoRoot, "vercel.json");
+if (existsSync(rootConfig)) {
+  targets.push(rootConfig);
+}
+
+for (const configPath of targets) {
+  applyRewrites(configPath);
+}
+
 if (origin) {
-  console.log(`vercel.json: proxying API routes → ${origin}`);
+  console.log(`vercel.json: proxying API routes → ${origin} (${targets.length} file(s))`);
 } else {
-  console.log("vercel.json: no CORTEX_API_ORIGIN — SPA only (use nginx/Vite proxy locally)");
+  console.log(
+    `vercel.json: no CORTEX_API_ORIGIN — SPA only (${targets.length} file(s); use nginx/Vite proxy locally)`,
+  );
 }
