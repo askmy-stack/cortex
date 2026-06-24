@@ -21,9 +21,11 @@
 
 | In 3 minutes | Command |
 |---|---|
-| **Run the demo** | `make demo` → [localhost:3000](http://localhost:3000) |
-| **Ask a question** | Workspace `local-dev` → *Why CockroachDB for payments?* |
-| **Wire an agent** | Add the MCP block below — `cortex_query`, `cortex_inject`, `cortex_remember` |
+| **Live demo** | **[frontend-ten-rouge-99.vercel.app](https://frontend-ten-rouge-99.vercel.app)** — workspace `local-dev`, ask *Why CockroachDB for payments?* |
+| **Run locally** | `make demo` → [localhost:3000](http://localhost:3000) |
+| **Wire an agent** | [MCP setup in 60s](docs/MCP_SETUP.md) — `cortex_query`, `cortex_inject`, `cortex_remember` |
+
+> **Portfolio / LinkedIn:** Share the [live demo link](https://frontend-ten-rouge-99.vercel.app). For a 24/7 backend (no laptop required), deploy the API to Render/Railway — [docs/PORTFOLIO_DEMO.md](docs/PORTFOLIO_DEMO.md).
 
 ---
 
@@ -224,8 +226,9 @@ Host the **dashboard only** on Vercel (`frontend/` as root directory). The API a
 | Step | Action |
 |------|--------|
 | 1 | Deploy `frontend/` with `CORTEX_API_ORIGIN=https://your-api.example.com` |
-| 2 | Build runs `scripts/vercel-api-rewrites.mjs` — same-origin `/query` proxy |
+| 2 | Edge `middleware.ts` proxies same-origin `/query` to the API at runtime |
 | 3 | Avoid `VITE_API_URL` pointing at tunnel URLs (511 errors) |
+| 4 | API on Railway/Render via `railway.toml` or `render.yaml` — see [docs/DEPLOY.md](docs/DEPLOY.md) |
 
 Full guide: [docs/DEPLOY.md](docs/DEPLOY.md). **Dual workspaces** (synthetic `local-dev` vs real OSS imports): [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 

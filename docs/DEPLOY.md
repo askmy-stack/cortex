@@ -30,13 +30,14 @@ After changing Root Directory, clear the Framework Preset override if it still s
 
 - Root Directory: `frontend`
 - Framework: Vite
-- Build: `npm run build` (runs `scripts/vercel-api-rewrites.mjs`)
+- Build: `npm run build`
+- API proxy: `middleware.ts` reads `CORTEX_API_ORIGIN` at **runtime** (Vercel parses `vercel.json` before build — build-time rewrites cannot inject env vars)
 
 **Environment variables**
 
 | Variable | Purpose |
 |----------|---------|
-| `CORTEX_API_ORIGIN` | Public API URL — Vercel rewrites `/query`, `/health`, etc. server-side |
+| `CORTEX_API_ORIGIN` | Public API URL — Edge Middleware proxies `/query`, `/health`, etc. server-side |
 | ~~`VITE_API_URL`~~ | **Do not** point at `loca.lt` — causes 511 tunnel interstitial errors |
 
 **Do not** import the repo root with Framework Preset **FastAPI**. That installs the full `uv.lock` (~5 GB) and exceeds Lambda limits.
@@ -77,6 +78,89 @@ python scripts/import_github_org.py --org tiangolo --repo fastapi --dry-run
 make verify-dual
 ```
 
+## Railway / Render (API v1)
+
+Deploy **only the API** — not Kafka or the pipeline worker. Pre-seed Neo4j with `scripts/seed_demo.py` so `/query` works without live ingestion.
+
+### Railway
+
+```bash
+# Install CLI: https://docs.railway.com/guides/cli
+railway login
+railway init          # link this repo
+railway up            # uses railway.toml → api/Dockerfile
+```
+
+**Required environment variables** (Railway → Variables):
+
+| Variable | Example |
+|----------|---------|
+| `NEO4J_URI` | `neo4j+s://xxxx.databases.neo4j.io` |
+| `NEO4J_USER` | `neo4j` |
+| `NEO4J_PASSWORD` | Aura password |
+| `REDIS_URL` | `rediss://default:token@host.upstash.io:6379` |
+| `CORTEX_API_KEYS` | `demo-readonly:authenticated` (optional abuse control) |
+| `CORTEX_SEMANTIC_ENABLED` | `false` |
+| `CORTEX_SEED_DEMO` | `true` **first deploy only** — then set `false` so restarts skip re-seed |
+
+Copy the public Railway URL (e.g. `https://cortex-api-production.up.railway.app`), set `CORTEX_API_ORIGIN` on Vercel, and redeploy the frontend.
+
+**Production startup:** `scripts/start_api_production.sh` runs migrations on every boot. Demo seed runs only when `CORTEX_SEED_DEMO=true`.
+
+### Render
+
+Use [render.yaml](../render.yaml) as a Blueprint, or create a **Web Service** with Docker runtime and `api/Dockerfile` as the Dockerfile path. Same env vars as Railway.
+
+### Seed production graph (one-time)
+
+**Option A — first Railway deploy:** set `CORTEX_SEED_DEMO=true` on the API service, deploy once, then set `CORTEX_SEED_DEMO=false`.
+
+**Option B — from laptop** with Neo4j credentials in `.env`:
+
+```bash
+export NEO4J_URI=neo4j+s://...
+export NEO4J_USER=neo4j
+export NEO4J_PASSWORD=...
+uv run python graph/migrate.py
+uv run python scripts/seed_demo.py --workspace local-dev --scale small
+uv run python scripts/import_github_graph.py --org tiangolo --repo fastapi --workspace oss-tiangolo-fastapi --limit 30
+make verify-dual-production
+```
+
+Direct graph import (no Kafka): [scripts/import_github_graph.py](../scripts/import_github_graph.py).
+
+### Neo4j Aura migration
+
+See [AURA_MIGRATION.md](./AURA_MIGRATION.md). Rotate passwords after any credential exposure — update Railway env vars only, never commit secrets.
+
+### Optional demo API key (abuse control)
+
+For public demos, use a read-only key so anonymous traffic cannot hammer write endpoints:
+
+```bash
+CORTEX_API_KEYS=demo-readonly:authenticated
+```
+
+Dashboard users paste the key in **Connection** settings. Open `/query` and `/health` remain usable without a key when `CORTEX_API_KEYS` is unset.
+
+### Wire Vercel → API
+
+```bash
+# Vercel project → Settings → Environment Variables
+CORTEX_API_ORIGIN=https://your-api.railway.app
+
+cd frontend && npx vercel deploy --prod
+```
+
+Verify:
+
+```bash
+curl -s https://your-vercel-app.vercel.app/health
+curl -s -X POST https://your-vercel-app.vercel.app/query \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Why CockroachDB?","workspace_id":"local-dev","limit":5}'
+```
+
 ## Auth on preview
 
 ```bash
@@ -85,3 +169,14 @@ CORTEX_DEMO_API_KEY=preview-key
 ```
 
 `make demo` and `scripts/demo.sh` send `Authorization` when these are set.
+
+## Optional cloud webhook path (v2)
+
+Full ingestion uses Kafka + pipeline-worker locally. For cloud v1 without Kafka, use direct graph import:
+
+```bash
+make import-oss-graph    # real GitHub PRs → Neo4j
+make seed-oss-fastapi    # synthetic OSS demo fallback
+```
+
+Future v2: deploy pipeline-worker as a second Railway service + Upstash Kafka, or add `POST /webhooks/github` → synchronous extract/write for demo scale. See [LAUNCH.md](./LAUNCH.md).

@@ -113,6 +113,20 @@ export function AskView() {
         subtitle="Natural language search over captured decisions — who decided, what systems are affected, and why."
       />
 
+      <p className="demo-hint panel" role="note">
+        <strong>Live demo:</strong> workspace <code>local-dev</code> · try{" "}
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => {
+            setQuery("Why CockroachDB for payments?");
+            void search();
+          }}
+        >
+          Why CockroachDB for payments?
+        </button>
+      </p>
+
       <WorkspaceBar />
 
       <section className="ask-form panel ask-hero">
@@ -212,6 +226,15 @@ export function AskView() {
             <h2>
               {lastQuery.total} result{lastQuery.total === 1 ? "" : "s"} ·{" "}
               {lastQuery.latency_ms}ms
+              {typeof lastQuery.coverage_score === "number" ? (
+                <>
+                  {" "}
+                  · coverage{" "}
+                  <span className="coverage-badge" title="Heuristic memory completeness for this workspace">
+                    {Math.round(lastQuery.coverage_score * 100)}%
+                  </span>
+                </>
+              ) : null}
             </h2>
             <button type="button" className="btn btn--ghost" onClick={() => setView("explore")}>
               Open memory map →

@@ -1,0 +1,46 @@
+# Optional production uptime smoke — hits live Railway + Vercel proxy.
+name: Production smoke
+
+on:
+  schedule:
+    # Every 6 hours — keeps Railway warm-ish and catches regressions.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Smoke Railway API
+        env:
+          CORTEX_PRODUCTION_URL: ${{ secrets.CORTEX_PRODUCTION_URL }}
+        run: |
+          URL="${CORTEX_PRODUCTION_URL:-https://cortex-api-production-fbd5.up.railway.app}"
+          python scripts/staging_smoke.py --url "$URL" --query "Why CockroachDB for payments?"
+
+  production-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Smoke Vercel dashboard proxy
+        env:
+          CORTEX_DASHBOARD_URL: ${{ secrets.CORTEX_DASHBOARD_URL }}
+        run: |
+          URL="${CORTEX_DASHBOARD_URL:-https://frontend-ten-rouge-99.vercel.app}"
+          python scripts/staging_smoke.py --url "$URL" --query "Why CockroachDB for payments?"

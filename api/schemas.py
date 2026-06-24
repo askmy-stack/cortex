@@ -44,6 +44,12 @@ class QueryResponse(BaseModel):
     results: list[DecisionResult]
     total: int
     latency_ms: float
+    coverage_score: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Heuristic workspace memory completeness (0–1)",
+    )
 
 
 class InjectRequest(BaseModel):

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../context/AppContext";
 import { MemoryGraph } from "../components/memory/MemoryGraph";
 import { TimelineView } from "../components/memory/TimelineView";
@@ -24,6 +24,13 @@ export function ExploreView() {
 
   const focusId = selectedDecisionId ?? exploreDecisions[0]?.event_id ?? null;
   const decisions = exploreDecisions.length > 0 ? exploreDecisions : lastQuery?.results ?? [];
+  const focusOnly = decisions.length === 0 && Boolean(selectedDecisionId);
+
+  useEffect(() => {
+    if (focusOnly) {
+      setTab("lineage");
+    }
+  }, [focusOnly, selectedDecisionId]);
 
   const handleCardSelect = useCallback(
     (id: string) => {
@@ -61,7 +68,7 @@ export function ExploreView() {
         </p>
       ) : null}
 
-      {decisions.length === 0 ? (
+      {decisions.length === 0 && !selectedDecisionId ? (
         <StateView
           icon="◎"
           title="No memories to map yet"
@@ -126,19 +133,26 @@ export function ExploreView() {
             ) : null}
           </section>
 
-          <section className="panel">
-            <h2 className="panel__title">Decisions in this view</h2>
-            <div className="decision-list">
-              {decisions.map((d) => (
-                <DecisionCard
-                  key={d.event_id}
-                  decision={d}
-                  selected={d.event_id === focusId}
-                  onSelect={handleCardSelect}
-                />
-              ))}
-            </div>
-          </section>
+          {decisions.length > 0 ? (
+            <section className="panel">
+              <h2 className="panel__title">Decisions in this view</h2>
+              <div className="decision-list">
+                {decisions.map((d) => (
+                  <DecisionCard
+                    key={d.event_id}
+                    decision={d}
+                    selected={d.event_id === focusId}
+                    onSelect={handleCardSelect}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : focusOnly && focusId ? (
+            <p className="explore-context muted" role="status">
+              Tracing lineage for decision <code>{focusId.slice(0, 8)}…</code> — run{" "}
+              <strong>Ask</strong> to populate the relationship graph.
+            </p>
+          ) : null}
         </>
       )}
     </article>

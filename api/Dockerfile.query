@@ -1,0 +1,30 @@
+# Query-only Cortex API for cloud deploy (Render/Railway portfolio demo).
+# Semantic search off (CORTEX_SEMANTIC_ENABLED=false) — no torch/spacy/mlflow.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV CORTEX_SEMANTIC_ENABLED=false
+
+COPY api/requirements-query.txt ./requirements-query.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements-query.txt
+
+COPY api ./api
+COPY connectors ./connectors
+COPY extraction ./extraction
+COPY graph ./graph
+COPY scoring ./scoring
+COPY shared ./shared
+COPY pipeline ./pipeline
+COPY memory ./memory
+COPY intelligence ./intelligence
+COPY scripts ./scripts
+
+EXPOSE 8000
+
+RUN chmod +x scripts/start_api_production.sh
+
+CMD ["scripts/start_api_production.sh"]

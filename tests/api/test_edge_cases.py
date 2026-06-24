@@ -93,6 +93,26 @@ def test_inject_rejects_short_context() -> None:
     assert response.status_code == 422
 
 
+def test_inject_uses_at_least_one_result_slot_for_small_token_budget() -> None:
+    """max_tokens=100 is valid; inject must not pass limit=0 to memory."""
+    client = TestClient(app)
+    mock_memory = AsyncMock()
+    mock_memory.inject_decisions = AsyncMock(return_value=[])
+    with patch("api.main.memory", return_value=mock_memory):
+        response = client.post(
+            "/inject",
+            json={
+                "context": "payments service database migration context",
+                "workspace_id": "ws-1",
+                "agent_id": "agent-1",
+                "max_tokens": 100,
+            },
+        )
+    assert response.status_code == 200
+    mock_memory.inject_decisions.assert_awaited_once()
+    assert mock_memory.inject_decisions.await_args.kwargs["limit"] == 1
+
+
 def test_query_limit_bounds() -> None:
     client = TestClient(app)
     response = client.post(

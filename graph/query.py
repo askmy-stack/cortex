@@ -387,6 +387,34 @@ class GraphQueryService:
         except Exception:
             return False
 
+    async def workspace_coverage_score(self, workspace_id: str) -> float:
+        """Estimate memory completeness for a workspace (0–1 heuristic).
+
+        Uses decision and system counts vs portfolio demo targets. Full Phase 8
+        coverage scoring will replace this with domain-aware completeness.
+        """
+        driver = await self._driver_instance()
+        async with driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (d:Decision {workspace_id: $workspace_id})
+                WHERE d.status <> 'archived'
+                WITH count(d) AS decisions
+                OPTIONAL MATCH (s:System {workspace_id: $workspace_id})
+                WITH decisions, count(s) AS systems
+                RETURN decisions, systems
+                """,
+                workspace_id=workspace_id,
+            )
+            record = await result.single()
+        if record is None:
+            return 0.0
+        decisions = int(record.get("decisions") or 0)
+        systems = int(record.get("systems") or 0)
+        decision_ratio = min(1.0, decisions / 50.0)
+        system_ratio = min(1.0, systems / 15.0)
+        return round(min(1.0, 0.7 * decision_ratio + 0.3 * system_ratio), 3)
+
     async def find_conflict_candidates(
         self,
         *,

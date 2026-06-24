@@ -35,14 +35,22 @@ class MemoryService:
         except ImportError:
             return None
 
+        redis_url = os.environ.get("REDIS_URL", "").strip()
         try:
-            client = redis.Redis(
-                host=os.environ.get("REDIS_HOST", "localhost"),
-                port=int(os.environ.get("REDIS_PORT", "6379")),
-                password=os.environ.get("REDIS_PASSWORD"),
-                socket_connect_timeout=1,
-                decode_responses=True,
-            )
+            if redis_url:
+                client = redis.from_url(
+                    redis_url,
+                    socket_connect_timeout=1,
+                    decode_responses=True,
+                )
+            else:
+                client = redis.Redis(
+                    host=os.environ.get("REDIS_HOST", "localhost"),
+                    port=int(os.environ.get("REDIS_PORT", "6379")),
+                    password=os.environ.get("REDIS_PASSWORD"),
+                    socket_connect_timeout=1,
+                    decode_responses=True,
+                )
             client.ping()
             return client
         except Exception:
@@ -135,6 +143,10 @@ class MemoryService:
             self._redis.setex(cache_key, 60, json.dumps(results))
 
         return results
+
+    async def workspace_coverage(self, workspace_id: str) -> float:
+        """Return heuristic completeness score for a workspace."""
+        return await self._graph.workspace_coverage_score(workspace_id)
 
     async def inject_decisions(
         self,

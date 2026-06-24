@@ -1,4 +1,7 @@
-.PHONY: demo demo-dry-run test ci stack init-kafka pipeline-restart pipeline-local verify-pipeline verify-github verify-jira verify-linear verify-connectors seed-dev import-oss verify-dual
+.PHONY: demo demo-dry-run test ci stack init-kafka pipeline-restart pipeline-local verify-pipeline verify-github verify-jira verify-linear verify-connectors portfolio-demo seed-dev import-oss import-oss-graph seed-cloud verify-dual verify-dual-production verify-production
+
+# Production API URL for smoke tests (override on CLI).
+CORTEX_PRODUCTION_URL ?= https://cortex-api-production-fbd5.up.railway.app
 
 # Local portfolio demo: Docker infra + migrations + seed + API + worker + frontend.
 demo:
@@ -53,5 +56,30 @@ seed-dev:
 import-oss:
 	uv run python scripts/import_github_org.py --org tiangolo --repo fastapi --dry-run
 
+# Direct Neo4j import (no Kafka) — use for cloud / portfolio backends.
+import-oss-graph:
+	uv run python scripts/import_github_graph.py --org tiangolo --repo fastapi --workspace oss-tiangolo-fastapi --limit 30
+
+# Synthetic OSS workspace seed when GitHub import is unavailable.
+seed-oss-fastapi:
+	uv run python scripts/seed_oss_fastapi_demo.py --workspace oss-tiangolo-fastapi
+
+# Seed + OSS import against remote Neo4j (set NEO4J_URI / credentials in env).
+seed-cloud: seed-dev seed-oss-fastapi
+
 verify-dual:
 	uv run python scripts/dual_workspace_smoke.py --workspaces local-dev,oss-tiangolo-fastapi
+
+verify-production:
+	uv run python scripts/staging_smoke.py --url $(CORTEX_PRODUCTION_URL) --query "Why CockroachDB for payments?"
+
+verify-dual-production:
+	uv run python scripts/dual_workspace_smoke.py --url $(CORTEX_PRODUCTION_URL) --workspaces local-dev,oss-tiangolo-fastapi
+
+# Vercel frontend build smoke (injects API rewrites when CORTEX_API_ORIGIN is set).
+verify-vercel-build:
+	cd frontend && npm run build
+
+# Portfolio demo: Docker API must be up; starts cloudflared and prints Vercel env instructions.
+portfolio-demo:
+	@./scripts/start_portfolio_demo.sh

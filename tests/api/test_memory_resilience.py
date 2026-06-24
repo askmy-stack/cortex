@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -90,6 +90,21 @@ async def test_query_propagates_graph_failure() -> None:
             event_types=[],
             caller_roles=["authenticated"],
         )
+
+
+def test_build_redis_client_uses_redis_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """REDIS_URL (Upstash) takes precedence over REDIS_HOST for cloud deploys."""
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.delenv("REDIS_HOST", raising=False)
+
+    with patch("redis.from_url") as from_url:
+        client = MagicMock()
+        client.ping.return_value = True
+        from_url.return_value = client
+        built = MemoryService._build_redis_client()
+
+    from_url.assert_called_once()
+    assert built is client
 
 
 def test_redis_health_unreachable_when_client_none() -> None:

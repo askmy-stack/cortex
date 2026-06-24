@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchContradictions, resolveContradiction } from "../api/client";
+import { fetchCausalChain, fetchContradictions, resolveContradiction } from "../api/client";
 import { isUnauthorizedMessage } from "../lib/auth";
 import { shortId } from "../lib/format";
 import { useApp } from "../context/AppContext";
@@ -21,12 +21,17 @@ export function ReviewView() {
   const ws = workspaceId.trim() || "local-dev";
 
   const openInMap = useCallback(
-    (decisionId: string) => {
-      setExploreDecisions([]);
+    async (decisionId: string) => {
       setSelectedDecisionId(decisionId);
       setView("explore");
+      try {
+        const chain = await fetchCausalChain(decisionId, ws);
+        setExploreDecisions(chain.nodes);
+      } catch {
+        setExploreDecisions([]);
+      }
     },
-    [setExploreDecisions, setSelectedDecisionId, setView],
+    [setExploreDecisions, setSelectedDecisionId, setView, ws],
   );
 
   const load = useCallback(async () => {
@@ -151,7 +156,7 @@ export function ReviewView() {
                       <button
                         type="button"
                         className="btn btn--ghost btn--sm"
-                        onClick={() => openInMap(c.new_decision_id!)}
+                        onClick={() => void openInMap(c.new_decision_id!)}
                       >
                         View new
                       </button>
@@ -160,7 +165,7 @@ export function ReviewView() {
                       <button
                         type="button"
                         className="btn btn--ghost btn--sm"
-                        onClick={() => openInMap(c.prior_decision_id!)}
+                        onClick={() => void openInMap(c.prior_decision_id!)}
                       >
                         View prior
                       </button>

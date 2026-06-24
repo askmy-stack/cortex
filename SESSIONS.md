@@ -528,3 +528,48 @@
 1. Merge PR #15 after CI green
 2. Phase 6: dashboard polish + demo video
 3. Staging smoke with `CORTEX_CMVK_BACKEND=openai`
+
+---
+
+## Session — 2026-06-11 — Vercel v1 deployment + dual-workspace restore
+**Duration:** ~45m
+**Phase:** Phase 6 — deploy preview + dual-workspace tooling
+
+### Built
+- Restored deleted dual-workspace files from HEAD (`import_github_org.py`, `DEPLOY.md`, `vercel.json`, tests)
+- **`frontend/middleware.ts`** — runtime Edge proxy via `CORTEX_API_ORIGIN` (fixes build-time rewrite limitation on Vercel)
+- **`railway.toml`**, **`render.yaml`** — API v1 deploy blueprints
+- **`api/memory.py`** — `REDIS_URL` support for Upstash cloud Redis
+- **`docs/DEPLOY.md`**, **`README.md`** — Railway/Render + middleware deploy guide
+- Vercel production redeploy: **https://frontend-ten-rouge-99.vercel.app** — `/health` and `/query` verified end-to-end
+
+### State at end
+- Branch **`feature/dual-workspace-import`** — uncommitted changes (middleware, railway.toml, render.yaml, REDIS_URL)
+- **370 passed** (full suite, `--no-cov`)
+- `CORTEX_API_ORIGIN` on Vercel points at ephemeral localtunnel — replace with Railway URL for stable demo
+
+### Next session starts with
+1. `railway login` + deploy API; seed Neo4j Aura; update `CORTEX_API_ORIGIN`
+2. Commit + PR for dual-workspace + Vercel middleware
+3. Optional: `import_github_org.py` live run for `oss-tiangolo-fastapi`
+
+---
+
+## Session — 2026-06-11 — Portfolio demo link live
+**Duration:** ~20m
+**Phase:** Phase 6 — public demo for portfolio / LinkedIn
+
+### Built
+- **`docs/PORTFOLIO_DEMO.md`** — shareable demo URL, recruiter walkthrough, 24/7 Render/Railway path
+- **`scripts/start_portfolio_demo.sh`** + **`make portfolio-demo`** — cloudflared tunnel helper
+- **README** — Live demo row points to Vercel production URL
+- Vercel `CORTEX_API_ORIGIN` updated; production verified (`/health` 200, `/query` 3 hits)
+
+### State at end
+- **Portfolio URL:** https://frontend-ten-rouge-99.vercel.app
+- Demo works while Docker API + `cloudflared` run on Mac; Render/Railway needed for 24/7 LinkedIn traffic
+- Uncommitted: middleware, railway.toml, render.yaml, portfolio docs
+
+### Next session starts with
+1. Deploy API to Render/Railway + Aura for always-on demo
+2. Commit + push deployment slice

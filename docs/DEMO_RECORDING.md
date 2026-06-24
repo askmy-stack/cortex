@@ -11,6 +11,22 @@ Use this when capturing the **~3 minute** portfolio demo and any **README GIF**.
    - [http://localhost:3000](http://localhost:3000) — dashboard loads, **API health** is green.
    - [http://localhost:8000/docs](http://localhost:8000/docs) — OpenAPI loads.
 
+## Cloud demo script (Vercel + Railway)
+
+Use this when recording for LinkedIn without running Docker locally.
+
+| Time | Action |
+|------|--------|
+| 0:00 | Open https://frontend-ten-rouge-99.vercel.app — mention 24/7 Vercel + Railway stack. |
+| 0:15 | **Ask** tab → confirm workspace **`local-dev`**. |
+| 0:30 | Query *Why CockroachDB for payments?* — show results, trust scores, **coverage %**. |
+| 1:00 | Switch workspace to **`oss-tiangolo-fastapi`** (if imported) — compare real OSS decisions. |
+| 1:30 | **Explore** memory map; **Review** contradictions if seeded. |
+| 2:00 | Show [MCP_SETUP.md](./MCP_SETUP.md) — wire Cursor in one JSON block. |
+| 2:30 | GitHub README live demo link; close with organizational memory thesis. |
+
+Custom domain steps: [CUSTOM_DOMAIN.md](./CUSTOM_DOMAIN.md).
+
 ## Suggested script (voiceover optional)
 
 | Time | Action |

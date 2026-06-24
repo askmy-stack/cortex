@@ -29,6 +29,7 @@ export type QueryResponse = {
   results: DecisionResult[];
   total: number;
   latency_ms: number;
+  coverage_score?: number;
 };
 
 export type InjectResponse = {

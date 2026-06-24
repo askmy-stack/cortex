@@ -547,6 +547,38 @@ a {
   background: var(--accent-glow);
 }
 
+.demo-hint {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-button:hover {
+  opacity: 0.85;
+}
+
+.coverage-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
 .btn {
   padding: 0.55rem 1.1rem;
   border-radius: var(--radius);

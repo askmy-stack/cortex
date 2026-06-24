@@ -245,13 +245,24 @@ async def query(
         workspace_id=request.workspace_id,
     )
 
+    try:
+        coverage_score = await memory().workspace_coverage(request.workspace_id)
+    except Exception:
+        coverage_score = 0.0
+
     return QueryResponse(
         query=request.query,
         workspace_id=request.workspace_id,
         results=results,
         total=len(results),
         latency_ms=latency_ms,
+        coverage_score=coverage_score,
     )
+
+
+def _inject_result_limit(max_tokens: int) -> int:
+    """Map agent token budget to decision count (~400 tokens each), always ≥1."""
+    return max(1, min(max_tokens // 400, 10))
 
 
 @app.post(
@@ -266,7 +277,7 @@ async def inject(
 ) -> InjectResponse:
     """Inject relevant organizational memory into an AI agent's context window.
 
-    Called by the MCP server (mcp/server.ts) on every agent tool invocation.
+    Called by the MCP server (mcp/server.js) on every agent tool invocation.
     Returns the most relevant decisions ranked by importance × trust × recency.
 
     Ranks injectable decisions by importance × trust (see scoring.trust_scorer).
@@ -285,7 +296,7 @@ async def inject(
             context=request.context,
             workspace_id=request.workspace_id,
             caller_roles=roles,
-            limit=min(request.max_tokens // 400, 10),
+            limit=_inject_result_limit(request.max_tokens),
         )
     except Exception as exc:
         log.error("inject.failed", error=str(exc), agent_id=request.agent_id)

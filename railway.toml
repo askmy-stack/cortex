@@ -1,0 +1,18 @@
+# Cortex API — Railway deployment (v1 preview)
+# https://docs.railway.com/guides/dockerfiles
+#
+# Deploy:
+#   railway login && railway init
+#   railway up --dockerfile api/Dockerfile
+#
+# Set env vars in Railway dashboard (see docs/DEPLOY.md).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "api/Dockerfile.query"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
