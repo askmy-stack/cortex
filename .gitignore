@@ -22,8 +22,8 @@ htmlcov/
 coverage.xml
 *.cover
 
-# Environment
-.env
+# Vercel local project link (never commit credentials)
+.vercel/
 .env.*
 !.env.example
 

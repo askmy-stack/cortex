@@ -22,7 +22,7 @@ Cortex is a **multi-service stack** (Kafka, Neo4j, Redis, API, pipeline worker, 
 | Approach | Settings |
 |----------|----------|
 | **Recommended** | Project Settings → General → **Root Directory** → `frontend` → Save → Redeploy |
-| **Repo root** | Keep Root Directory `.` — root `vercel.json` forces `framework: vite` and builds `frontend/dist` only (no Python) |
+| **Repo root** | Keep Root Directory `.` — root `vercel.json` + `.vercelignore` upload only `frontend/` (excludes Python/`api/` so the bundle stays under Vercel limits) |
 
 After changing Root Directory, clear the Framework Preset override if it still says **FastAPI** — it should be **Vite** or **Other**.
 
