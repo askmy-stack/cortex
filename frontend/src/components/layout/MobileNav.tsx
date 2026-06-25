@@ -1,12 +1,20 @@
 import type { ViewId } from "../../types";
 import { useApp } from "../../context/AppContext";
+import {
+  IconAgent,
+  IconGraph,
+  IconHome,
+  IconReview,
+  IconSearch,
+  IconSpark,
+} from "../ui/icons";
 
-const ITEMS: { id: ViewId; label: string; icon: string }[] = [
-  { id: "home", label: "Overview", icon: "⌂" },
-  { id: "ask", label: "Search", icon: "?" },
-  { id: "explore", label: "Map", icon: "◎" },
-  { id: "agents", label: "AI", icon: "⚡" },
-  { id: "review", label: "Review", icon: "⚖" },
+const ITEMS: { id: ViewId; label: string; Icon: typeof IconHome }[] = [
+  { id: "home", label: "Overview", Icon: IconHome },
+  { id: "ask", label: "Search", Icon: IconSearch },
+  { id: "explore", label: "Map", Icon: IconGraph },
+  { id: "agents", label: "AI", Icon: IconAgent },
+  { id: "review", label: "Review", Icon: IconReview },
 ];
 
 /** Bottom tab bar for phone/tablet — primary navigation on small screens. */
@@ -22,9 +30,10 @@ export function MobileNav() {
           className={`mobile-nav__item ${view === item.id ? "mobile-nav__item--active" : ""}`}
           onClick={() => setView(item.id)}
           aria-current={view === item.id ? "page" : undefined}
+          aria-label={item.label}
         >
           <span className="mobile-nav__icon" aria-hidden>
-            {item.icon}
+            <item.Icon size={20} />
           </span>
           <span className="mobile-nav__label">{item.label}</span>
         </button>
@@ -36,7 +45,7 @@ export function MobileNav() {
         aria-label="Open Cortex Assist"
       >
         <span className="mobile-nav__icon" aria-hidden>
-          ✦
+          <IconSpark size={20} />
         </span>
         <span className="mobile-nav__label">Assist</span>
       </button>
