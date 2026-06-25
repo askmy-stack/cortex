@@ -1,18 +1,38 @@
 import { memo, useId, useState } from "react";
 import type { DecisionResult } from "../../types";
 import { formatRelativeTime, formatSource } from "../../lib/format";
+import { buildDecisionShareUrl } from "../../lib/routing";
+import { useToast } from "../ui/Toast";
 import { DecisionScores } from "./DecisionScores";
+import { IconLink } from "../ui/icons";
 
 type Props = {
   decision: DecisionResult;
   defaultOpen?: boolean;
   onSelect?: (id: string) => void;
+  onDetail?: (id: string) => void;
   selected?: boolean;
 };
 
-function DecisionCardInner({ decision: d, defaultOpen, onSelect, selected }: Props) {
+function DecisionCardInner({
+  decision: d,
+  defaultOpen,
+  onSelect,
+  onDetail,
+  selected,
+}: Props) {
   const [open, setOpen] = useState(!!defaultOpen);
   const panelId = useId();
+  const { showToast } = useToast();
+
+  async function copyLink(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(buildDecisionShareUrl(d.event_id));
+      showToast("Decision link copied");
+    } catch {
+      showToast("Could not copy link");
+    }
+  }
 
   return (
     <article className={`decision-card fade-in ${selected ? "decision-card--selected" : ""}`}>
@@ -21,7 +41,10 @@ function DecisionCardInner({ decision: d, defaultOpen, onSelect, selected }: Pro
         className="decision-card__header"
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          onDetail?.(d.event_id);
+        }}
       >
         <span className="decision-card__type">{d.event_type}</span>
         <h3 className="decision-card__title">{d.content}</h3>
@@ -90,11 +113,10 @@ function DecisionCardInner({ decision: d, defaultOpen, onSelect, selected }: Pro
           ) : null}
 
           <footer className="decision-card__footer">
-            <button
-              type="button"
-              className="btn-text"
-              onClick={() => onSelect?.(d.event_id)}
-            >
+            <button type="button" className="btn-text" onClick={() => void copyLink()}>
+              <IconLink size={14} aria-hidden /> Copy link
+            </button>
+            <button type="button" className="btn-text" onClick={() => onSelect?.(d.event_id)}>
               View in memory map →
             </button>
           </footer>
@@ -104,13 +126,12 @@ function DecisionCardInner({ decision: d, defaultOpen, onSelect, selected }: Pro
   );
 }
 
-// Lists of 10+ cards re-rendered on unrelated context updates; memo keeps the
-// expensive markup stable when neither the decision nor the selection changes.
 export const DecisionCard = memo(DecisionCardInner, (prev, next) => {
   return (
     prev.decision === next.decision &&
     prev.selected === next.selected &&
     prev.defaultOpen === next.defaultOpen &&
-    prev.onSelect === next.onSelect
+    prev.onSelect === next.onSelect &&
+    prev.onDetail === next.onDetail
   );
 });
