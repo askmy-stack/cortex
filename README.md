@@ -127,6 +127,17 @@ Regenerate the README animation: `python scripts/generate_readme_demo_gif.py` �
 
 ---
 
+## Deploy
+
+| Goal | Guide |
+|------|--------|
+| **$0 portfolio demo** (Cloudflare Pages + Render free + Aura + Upstash) | [docs/DEPLOY-FREE.md](docs/DEPLOY-FREE.md) |
+| **Production split** (Vercel dashboard + Railway/Render API) | [docs/DEPLOY.md](docs/DEPLOY.md) |
+
+After deploy, verify end-to-end: `./scripts/verify_free_deploy.sh --api https://YOUR_API --pages https://YOUR_PAGES`
+
+---
+
 ## Architecture
 
 ```
@@ -375,7 +386,7 @@ cortex/
 | Phase 4 | Importance + trust scoring + graph RBAC | ✅ Shipped |
 | Phase 5 | Contradiction detector + decay engine | ✅ Shipped |
 | Phase 6 | React dashboard (Ask, memory map, guide, agent inject) | ✅ Shipped |
-| Phase 7 | Demo video + open-source launch polish | 🔄 README GIF + pre-launch hardening shipped |
+| Phase 7 | Live demo URL + demo video + open-source launch | 🔄 In progress |
 | Phase 8 | Outcome tracking + coverage scoring | ⏳ Post-launch |
 | Phase 9 | Elicitation bot (implicit knowledge) | ⏳ Post-launch |
 | Phase 10 | Federated cross-org memory | ⏳ v2 |
