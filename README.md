@@ -21,7 +21,8 @@
 
 | In 3 minutes | Command |
 |---|---|
-| **Run the demo** | `make demo` → [localhost:3000](http://localhost:3000) |
+| **Live demo** | [cortex-blush-theta.vercel.app](https://cortex-blush-theta.vercel.app) (dashboard; set `CORTEX_API_ORIGIN` on Vercel for API-backed search) |
+| **Run locally** | `make demo` → [localhost:3000](http://localhost:3000) |
 | **Ask a question** | Workspace `local-dev` → *Why CockroachDB for payments?* |
 | **Wire an agent** | Add the MCP block below — `cortex_query`, `cortex_inject`, `cortex_remember` |
 

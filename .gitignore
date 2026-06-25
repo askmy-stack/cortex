@@ -24,6 +24,7 @@ coverage.xml
 
 # Vercel local project link (never commit credentials)
 .vercel/
+.env
 .env.*
 !.env.example
 

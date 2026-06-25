@@ -555,3 +555,26 @@
 1. Merge `feat/ui-qa-a11y` → `main` PR when CI green
 2. Execute Plan A deploy per `docs/DEPLOY-FREE.md`
 3. Phase 7: live demo URL in README + 3-minute demo video
+
+---
+
+## Session — 2026-06-25 — Main merge + launch sanity pass
+**Duration:** ~1h (cleanup, sanity checks, Vercel production verify)
+**Phase:** Phase 7 — launch
+
+### Built
+- **PR #25 merged** — full UI stack + Plan A deploy on `main` (`577e1e1`)
+- Deleted **`docs/REFINEMENT_AUDIT.md`** (completed historical audit; no references)
+- **`.gitignore`** — ignore root `.env` (secrets)
+- **README** — live Vercel demo link in hero table
+- **Sanity:** 357 pytest · 11 vitest · 8 e2e — all pass locally
+
+### State at end
+- **Production dashboard:** https://cortex-blush-theta.vercel.app (Vercel, deploy from `main`)
+- **API proxy:** `/health` returns 503 until `CORTEX_API_ORIGIN` set on Vercel (Render/Plan A pending)
+- **Open PRs:** none
+
+### Next session starts with
+1. Set `CORTEX_API_ORIGIN` on Vercel after Render API deploy (Plan A)
+2. Record 3-minute demo video per `docs/DEMO_RECORDING.md`
+3. GitHub release tag `v0.1.0` + open-source announcement
