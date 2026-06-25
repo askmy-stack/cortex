@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { ToastProvider } from "./components/ui/Toast";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
@@ -11,9 +11,9 @@ import { AskView } from "./views/AskView";
 import { SkeletonStack } from "./components/ui/Skeleton";
 import { apiBase } from "./api/client";
 import { resolveApiKey } from "./lib/auth";
-import { hasCompletedOnboarding } from "./lib/onboarding";
 import { BugReportSection } from "./components/layout/BugReportSection";
 import { useApiHealth } from "./hooks/useApiHealth";
+import { IconSpark } from "./components/ui/icons";
 
 const ExploreView = lazy(() =>
   import("./views/ExploreView").then((m) => ({ default: m.ExploreView })),
@@ -102,7 +102,7 @@ function TopbarActions() {
         onClick={() => setAssistantOpen(true)}
         aria-label="Open Cortex Assist"
       >
-        ✦ Assist
+        <IconSpark size={16} aria-hidden /> Assist
       </button>
       <span
         className={`topbar__badge ${secured ? "topbar__badge--secured" : ""}`}
@@ -122,10 +122,8 @@ function TopbarActions() {
 }
 
 function AppChrome() {
-  const { setAssistantOpen } = useApp();
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => typeof window !== "undefined" && !hasCompletedOnboarding(),
-  );
+  const { setAssistantOpen, setView, setWorkspaceId, showOnboarding, setShowOnboarding } =
+    useApp();
 
   return (
     <div className="app">
@@ -136,6 +134,10 @@ function AppChrome() {
         <OnboardingModal
           onComplete={() => setShowOnboarding(false)}
           onOpenCopilot={() => setAssistantOpen(true)}
+          onFinishAsk={(workspace, query) => {
+            setWorkspaceId(workspace);
+            setView("ask", { q: query });
+          }}
         />
       ) : null}
       <ApiHealthBanner />
