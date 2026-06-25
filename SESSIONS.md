@@ -528,3 +528,30 @@
 1. Merge PR #15 after CI green
 2. Phase 6: dashboard polish + demo video
 3. Staging smoke with `CORTEX_CMVK_BACKEND=openai`
+
+---
+
+## Session — 2026-06-25 — UI stack completion + main merge prep
+**Duration:** ~3h (stacked PRs #18–#24, e2e fixes, rebase)
+**Phase:** Phase 6 complete → Phase 7 launch prep
+
+### Built
+- **PRs #18–#24** merged stack-to-stack; **PR #18 only** on `main` until follow-up PR
+- **PR #17** closed (superseded by reliability + Plan A deploy path)
+- E2E fix: `journeys.spec.ts` assertion `1 result` → `1 shown` (AskView copy change)
+- Stacked PR build fixes: AppContext wiring, DecisionCard `onDetail`, rebase chain
+- **`docs/DEPLOY-FREE.md`** — Plan A $0 runbook (Cloudflare Pages + Render + Aura + Upstash)
+- **PR to `main`** opened from `feat/ui-qa-a11y` (full dashboard + deploy)
+
+### State at end
+- **`main`:** PR #18 only (reliability foundation)
+- **`feat/ui-qa-a11y`:** full product tip — 11 vitest + 8 e2e pass locally
+- **Open PR:** `feat/ui-qa-a11y` → `main` (awaiting merge + CI)
+
+### Blockers
+- None for merge; Plan A deploy requires manual Aura/Render/Cloudflare setup (no secrets in repo)
+
+### Next session starts with
+1. Merge `feat/ui-qa-a11y` → `main` PR when CI green
+2. Execute Plan A deploy per `docs/DEPLOY-FREE.md`
+3. Phase 7: live demo URL in README + 3-minute demo video
