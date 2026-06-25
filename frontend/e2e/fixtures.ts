@@ -83,5 +83,9 @@ export async function installApiMocks(page: Page): Promise<void> {
 export async function dismissOnboarding(page: Page): Promise<void> {
   await page.addInitScript(() => {
     localStorage.setItem("cortex_onboarding_v1", "done");
+    localStorage.setItem(
+      "cortex_settings_v2",
+      JSON.stringify({ onboardingComplete: true, workspaceId: "local-dev" }),
+    );
   });
 }

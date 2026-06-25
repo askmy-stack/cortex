@@ -136,6 +136,24 @@ export function ReviewView() {
                   <span className="badge">Score {c.score.toFixed(2)}</span>
                   <span className="badge badge--muted">{c.status}</span>
                 </header>
+                <div className="contradiction-diff">
+                  <div className="contradiction-diff__col contradiction-diff__col--prior">
+                    <span className="contradiction-diff__label">Prior memory</span>
+                    <p>
+                      {c.prior_decision_id
+                        ? `Decision ${shortId(c.prior_decision_id)} may be superseded or contradicted.`
+                        : "Prior decision not linked."}
+                    </p>
+                  </div>
+                  <div className="contradiction-diff__col contradiction-diff__col--new">
+                    <span className="contradiction-diff__label">New capture</span>
+                    <p>
+                      {c.new_decision_id
+                        ? `Decision ${shortId(c.new_decision_id)} conflicts with existing memory.`
+                        : "New decision not linked."}
+                    </p>
+                  </div>
+                </div>
                 <p className="contradiction-card__body">{c.explanation}</p>
                 <footer className="contradiction-card__foot">
                   <div className="contradiction-card__ids">
