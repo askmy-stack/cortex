@@ -1,14 +1,14 @@
 import { useId, useState } from "react";
 import { useApp } from "../../context/AppContext";
 import { fetchHealth, hasApiKeyConfigured } from "../../api/client";
+import { persistApiKey } from "../../lib/auth";
+import { setClientApiKey } from "../../api/client";
 import { useToast } from "../ui/Toast";
-import { IconLock } from "../ui/icons";
 
 const PRESETS = ["local-dev", "acme-demo"] as const;
 
 export function WorkspaceBar() {
-  const { workspaceId, setWorkspaceId, apiKey, setApiKey, saveApiKey, clearApiKey, replayOnboarding } =
-    useApp();
+  const { workspaceId, setWorkspaceId, apiKey, setApiKey, saveApiKey } = useApp();
   const { showToast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -44,7 +44,8 @@ export function WorkspaceBar() {
 
   function handleClear(): void {
     setApiKey("");
-    clearApiKey();
+    persistApiKey("");
+    setClientApiKey("");
     setTestOk(null);
     showToast("API key cleared");
   }
@@ -88,7 +89,7 @@ export function WorkspaceBar() {
             className={`connection-bar__status ${secured ? "connection-bar__status--secured" : ""}`}
             aria-hidden
           >
-            {secured ? <IconLock size={14} /> : "◇"}
+            {secured ? "🔒" : "◇"}
           </span>
           Connection
         </button>
@@ -137,9 +138,6 @@ export function WorkspaceBar() {
               disabled={testing}
             >
               {testing ? "Testing…" : "Test connection"}
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={replayOnboarding}>
-              Replay tour
             </button>
           </div>
           {secured ? (
