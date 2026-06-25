@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchCausalChain } from "../../api/client";
 import type { DecisionResult } from "../../types";
 import { formatRelativeTime } from "../../lib/format";
@@ -16,24 +16,23 @@ export function LineageView({ decisionId, workspaceId, onSelectDecision }: Props
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    fetchCausalChain(decisionId, workspaceId)
-      .then((res) => {
-        if (!cancelled) setNodes(res.nodes);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const res = await fetchCausalChain(decisionId, workspaceId);
+      setNodes(res.nodes);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setNodes([]);
+    } finally {
+      setLoading(false);
+    }
   }, [decisionId, workspaceId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   if (loading) {
     return (
@@ -46,14 +45,22 @@ export function LineageView({ decisionId, workspaceId, onSelectDecision }: Props
   }
   if (error) {
     return (
-      <StateView tone="error" icon="!" title="Couldn't trace lineage">
+      <StateView
+        tone="error"
+        title="Couldn't trace lineage"
+        action={
+          <button type="button" className="btn btn--secondary" onClick={() => void load()}>
+            Retry
+          </button>
+        }
+      >
         {error}
       </StateView>
     );
   }
   if (nodes.length === 0) {
     return (
-      <StateView icon="◇" title="No lineage yet">
+      <StateView title="No lineage yet">
         This decision hasn't superseded or been triggered by anything else in the graph yet.
       </StateView>
     );
