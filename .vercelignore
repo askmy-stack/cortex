@@ -1,6 +1,15 @@
-# Cortex backend — never deploy Python on Vercel (API runs on Railway/Render).
-# Use leading / so frontend/scripts/ is NOT ignored.
+# Cortex monorepo — Vercel hosts the Vite dashboard only.
+# Whitelist: only frontend + root deploy config are uploaded (keeps bundle < 500 MB).
+# Use leading paths where noted so frontend/scripts/ is never excluded by mistake.
 
+*
+!frontend
+!frontend/**
+!vercel.json
+!middleware.ts
+!.vercelignore
+
+# Belt-and-suspenders: never upload Python backend even if patterns change
 /api/
 /pipeline/
 /connectors/
@@ -12,17 +21,7 @@
 /shared/
 /mcp/
 /tests/
-/scripts/
-/.github/
 pyproject.toml
 uv.lock
 .python-version
-docker-compose.yml
-railway.toml
-render.yaml
-Makefile
-CLAUDE.md
-ARCHITECTURE.md
-DECISIONS.md
-MISTAKES.md
-SESSIONS.md
+*.py
