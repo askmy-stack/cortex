@@ -1,6 +1,7 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { ToastProvider } from "./components/ui/Toast";
+import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import { Sidebar } from "./components/layout/Sidebar";
 import { MobileNav } from "./components/layout/MobileNav";
 import { AssistantPanel } from "./components/assistant/AssistantPanel";
@@ -10,8 +11,9 @@ import { AskView } from "./views/AskView";
 import { SkeletonStack } from "./components/ui/Skeleton";
 import { apiBase } from "./api/client";
 import { resolveApiKey } from "./lib/auth";
-import { hasCompletedOnboarding } from "./lib/onboarding";
 import { BugReportSection } from "./components/layout/BugReportSection";
+import { useApiHealth } from "./hooks/useApiHealth";
+import { IconSpark } from "./components/ui/icons";
 
 const ExploreView = lazy(() =>
   import("./views/ExploreView").then((m) => ({ default: m.ExploreView })),
@@ -57,25 +59,57 @@ function MainContent() {
   );
 }
 
+function ApiHealthBanner() {
+  const { status, refresh } = useApiHealth();
+  if (status === "ok" || status === "checking") return null;
+  const label =
+    status === "degraded"
+      ? "API online but a dependency is degraded (Neo4j or Redis)."
+      : "Cannot reach the Cortex API. Check Connection settings or try again shortly.";
+  return (
+    <div className={`api-health-banner api-health-banner--${status}`} role="status">
+      <span>{label}</span>
+      <button type="button" className="btn btn--ghost btn--sm" onClick={() => void refresh()}>
+        Retry
+      </button>
+    </div>
+  );
+}
+
 function TopbarActions() {
   const { apiKey, setAssistantOpen } = useApp();
+  const { status } = useApiHealth(120_000);
   const secured = Boolean(resolveApiKey(apiKey));
   return (
     <div className="topbar__actions">
+      <span
+        className={`topbar__health topbar__health--${status}`}
+        title={
+          status === "ok"
+            ? "API healthy"
+            : status === "degraded"
+              ? "API degraded"
+              : "API unreachable"
+        }
+        role="status"
+        aria-live="polite"
+      >
+        <span className="topbar__health-label">API status: {status}</span>
+      </span>
       <button
         type="button"
         className="topbar__assist-btn"
         onClick={() => setAssistantOpen(true)}
         aria-label="Open Cortex Assist"
       >
-        ✦ Assist
+        <IconSpark size={16} aria-hidden /> Assist
       </button>
       <span
         className={`topbar__badge ${secured ? "topbar__badge--secured" : ""}`}
         title={
           secured
             ? "API key configured — secured mode"
-            : "Open dev mode — no API key (set in Connection settings)"
+            : "Open demo mode — no API key (set in Connection settings)"
         }
       >
         {secured ? "Secured" : "Open"}
@@ -88,10 +122,8 @@ function TopbarActions() {
 }
 
 function AppChrome() {
-  const { setAssistantOpen } = useApp();
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => typeof window !== "undefined" && !hasCompletedOnboarding(),
-  );
+  const { setAssistantOpen, setView, setWorkspaceId, showOnboarding, setShowOnboarding } =
+    useApp();
 
   return (
     <div className="app">
@@ -102,8 +134,13 @@ function AppChrome() {
         <OnboardingModal
           onComplete={() => setShowOnboarding(false)}
           onOpenCopilot={() => setAssistantOpen(true)}
+          onFinishAsk={(workspace, query) => {
+            setWorkspaceId(workspace);
+            setView("ask", { q: query });
+          }}
         />
       ) : null}
+      <ApiHealthBanner />
       <header className="topbar">
         <div className="topbar__brand">
           <span className="topbar__logo" aria-hidden>
@@ -119,7 +156,9 @@ function AppChrome() {
 
       <div className="app__body">
         <Sidebar />
-        <MainContent />
+        <ErrorBoundary>
+          <MainContent />
+        </ErrorBoundary>
         <AssistantPanel />
       </div>
 

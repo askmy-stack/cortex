@@ -1,0 +1,28 @@
+# Cortex backend — never deploy Python on Vercel (API runs on Railway/Render).
+# Use leading / so frontend/scripts/ is NOT ignored.
+
+/api/
+/pipeline/
+/connectors/
+/extraction/
+/graph/
+/intelligence/
+/memory/
+/scoring/
+/shared/
+/mcp/
+/tests/
+/scripts/
+/.github/
+pyproject.toml
+uv.lock
+.python-version
+docker-compose.yml
+railway.toml
+render.yaml
+Makefile
+CLAUDE.md
+ARCHITECTURE.md
+DECISIONS.md
+MISTAKES.md
+SESSIONS.md
