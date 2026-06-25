@@ -4,12 +4,15 @@ import type { DecisionResult, Health } from "../types";
 import { useApp } from "../context/AppContext";
 import { buildDashboardMetrics, trustHeadline } from "../lib/insights";
 import { scorePercent } from "../lib/format";
+import { isLiveDemoHost } from "../lib/settings";
 import { PageHeader } from "../components/ui/PageHeader";
 import { MetricCard } from "../components/ui/MetricCard";
 import { DecisionTeaser } from "../components/dashboard/DecisionTeaser";
 import { MemoryGraph } from "../components/memory/MemoryGraph";
-import { Skeleton } from "../components/ui/Skeleton";
+import { WorkspaceBar } from "../components/layout/WorkspaceBar";
+import { SkeletonStack } from "../components/ui/Skeleton";
 import { StateView } from "../components/ui/StateView";
+import { IconEmpty } from "../components/ui/icons";
 
 export function HomeView() {
   const {
@@ -19,11 +22,13 @@ export function HomeView() {
     setLastQuery,
     workspaceId,
     setAssistantOpen,
+    lastQuery,
   } = useApp();
   const [decisions, setDecisions] = useState<DecisionResult[]>([]);
   const [health, setHealth] = useState<Health | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState(() => buildDashboardMetrics([], []));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -31,7 +36,11 @@ export function HomeView() {
     const ws = workspaceId.trim() || "local-dev";
     try {
       const [queryRes, contradictions, healthRes] = await Promise.all([
-        queryMemory({ query: "organizational decisions architecture payments", workspace_id: ws, limit: 12 }),
+        queryMemory({
+          query: "organizational decisions architecture payments",
+          workspace_id: ws,
+          limit: 12,
+        }),
         fetchContradictions(ws).catch(() => []),
         fetchHealth().catch(() => null),
       ]);
@@ -50,17 +59,35 @@ export function HomeView() {
     }
   }, [workspaceId, setLastQuery, setExploreDecisions, setSelectedDecisionId]);
 
-  const [metrics, setMetrics] = useState(() =>
-    buildDashboardMetrics([], []),
-  );
-
   useEffect(() => {
     void load();
   }, [load]);
 
   function openDecision(id: string) {
     setSelectedDecisionId(id);
-    setView("explore");
+    setView("explore", { decision: id });
+  }
+
+  const coverage =
+    typeof lastQuery?.coverage_score === "number"
+      ? lastQuery.coverage_score
+      : metrics.decisionCount > 0
+        ? 0.45
+        : 0;
+
+  if (loading && !decisions.length && !error) {
+    return (
+      <article className="view view--home fade-in">
+        <PageHeader
+          eyebrow="Organizational intelligence"
+          title="See what your team decided — and why it matters"
+          subtitle="A living memory of decisions across Slack, GitHub, Jira, and more."
+        />
+        <WorkspaceBar />
+        <SkeletonStack rows={4} variant="card" />
+        <SkeletonStack rows={2} variant="row" />
+      </article>
+    );
   }
 
   return (
@@ -90,67 +117,68 @@ export function HomeView() {
         }
       />
 
+      {isLiveDemoHost() ? (
+        <p className="live-demo-banner panel" role="note">
+          <strong>Live demo</strong> — connected to Cortex cloud memory. Try Search or open
+          Connection to point at your own API.
+        </p>
+      ) : null}
+
+      <WorkspaceBar />
+
       {error ? (
-        <StateView tone="error" icon="!" title="Can't load organizational memory" action={
-          <button type="button" className="btn btn--secondary" onClick={() => void load()}>
-            Retry
-          </button>
-        }>
+        <StateView
+          tone="error"
+          title="Can't load organizational memory"
+          action={
+            <button type="button" className="btn btn--secondary" onClick={() => void load()}>
+              Retry
+            </button>
+          }
+        >
           {error}
         </StateView>
       ) : null}
 
-      {loading ? (
-        <div className="metrics-row" aria-hidden>
-          {Array.from({ length: 4 }, (_, i) => (
-            <Skeleton key={i} variant="card" />
-          ))}
-        </div>
-      ) : (
-        <section className="metrics-row" aria-label="Executive summary">
-          <MetricCard
-            icon="◈"
-            label="Decisions in view"
-            value={String(metrics.decisionCount)}
-            hint="Captured organizational memory"
-            tone="accent"
-          />
-          <MetricCard
-            icon="◎"
-            label="Memory confidence"
-            value={trustHeadline(metrics.avgTrust)}
-            hint={metrics.decisionCount ? `${scorePercent(metrics.avgTrust)}% avg trust` : "Search to populate"}
-            tone="ok"
-          />
-          <MetricCard
-            icon="⚡"
-            label="Avg impact"
-            value={metrics.decisionCount ? `${scorePercent(metrics.avgImpact)}%` : "—"}
-            hint="Importance across decisions"
-          />
-          <MetricCard
-            icon="⚖"
-            label="Open conflicts"
-            value={String(metrics.pendingConflicts)}
-            hint={metrics.pendingConflicts ? "Needs review" : "Graph is consistent"}
-            tone={metrics.pendingConflicts ? "warn" : "ok"}
-          />
-        </section>
-      )}
+      <section className="metrics-row" aria-label="Executive summary">
+        <MetricCard
+          icon="◈"
+          label="Decisions in view"
+          value={String(metrics.decisionCount)}
+          hint="Captured organizational memory"
+          tone="accent"
+        />
+        <MetricCard
+          icon="◎"
+          label="Memory confidence"
+          value={trustHeadline(metrics.avgTrust)}
+          hint={metrics.decisionCount ? `${scorePercent(metrics.avgTrust)}% avg trust` : "Search to populate"}
+          tone="ok"
+        />
+        <MetricCard
+          icon="◇"
+          label="Coverage"
+          value={metrics.decisionCount ? `${Math.round(coverage * 100)}%` : "—"}
+          hint="How complete memory is for this workspace"
+          tone="accent"
+        />
+        <MetricCard
+          icon="⚖"
+          label="Open conflicts"
+          value={String(metrics.pendingConflicts)}
+          hint={metrics.pendingConflicts ? "Needs review" : "Graph is consistent"}
+          tone={metrics.pendingConflicts ? "warn" : "ok"}
+        />
+      </section>
 
       <div className="dashboard-grid">
         <section className="dashboard-panel" aria-labelledby="recent-decisions">
           <h2 id="recent-decisions" className="dashboard-panel__title">
             Recent decisions
           </h2>
-          {loading ? (
-            <>
-              <Skeleton variant="row" />
-              <Skeleton variant="row" />
-            </>
-          ) : metrics.recentDecisions.length === 0 ? (
+          {metrics.recentDecisions.length === 0 ? (
             <StateView
-              icon="◇"
+              icon={<IconEmpty size={28} />}
               title="No decisions yet"
               action={
                 <button type="button" className="btn btn--primary" onClick={() => setView("ask")}>
@@ -158,7 +186,8 @@ export function HomeView() {
                 </button>
               }
             >
-              Run <code>make demo</code> to seed example memories, or capture a decision from the AI agents view.
+              Connect your tools or capture a decision from AI agents — then search to see
+              organizational memory here.
             </StateView>
           ) : (
             <div className="decision-feed">
@@ -168,7 +197,7 @@ export function HomeView() {
             </div>
           )}
           {metrics.recentDecisions.length > 0 ? (
-            <footer style={{ marginTop: "var(--space-4)" }}>
+            <footer className="dashboard-panel__foot">
               <button type="button" className="btn btn--ghost" onClick={() => setView("explore")}>
                 Open full memory map →
               </button>
@@ -199,9 +228,7 @@ export function HomeView() {
 
           {metrics.activePeople.length > 0 ? (
             <>
-              <h3 className="field-label" style={{ marginTop: "var(--space-4)" }}>
-                Active decision makers
-              </h3>
+              <h3 className="field-label dashboard-panel__subhead">Active decision makers</h3>
               <div className="people-chips">
                 {metrics.activePeople.map((p) => (
                   <span key={p} className="people-chip">
@@ -214,9 +241,7 @@ export function HomeView() {
 
           {decisions.length > 0 ? (
             <div className="dashboard-graph-preview">
-              <h3 className="field-label" style={{ marginTop: "var(--space-4)" }}>
-                Knowledge graph preview
-              </h3>
+              <h3 className="field-label dashboard-panel__subhead">Knowledge graph preview</h3>
               <MemoryGraph
                 decisions={decisions.slice(0, 6)}
                 focusId={decisions[0]?.event_id}

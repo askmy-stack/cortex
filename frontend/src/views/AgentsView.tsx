@@ -204,16 +204,21 @@ export function AgentsView() {
         <section className="panel fade-in" aria-live="polite">
           <h2>What the agent would see</h2>
           {result.injected_decisions.length === 0 ? (
-            <StateView icon="◇" title="No matching memory">
+            <StateView title="No matching memory">
               Cortex didn't find decisions that match this context yet — try a more specific
-              prompt or seed more memories.
+              prompt or capture more organizational memory.
             </StateView>
           ) : (
             <>
-              <blockquote className="inject-summary">{result.context_summary}</blockquote>
-              <p className="muted">
-                ~{result.token_estimate} tokens · {result.latency_ms}ms
-              </p>
+              <div className="inject-token-bar" role="status">
+                <div className="inject-token-bar__fill" style={{ width: `${Math.min(100, (result.token_estimate / maxTokens) * 100)}%` }} />
+                <span className="inject-token-bar__label">
+                  ~{result.token_estimate} / {maxTokens} tokens · {result.latency_ms}ms
+                </span>
+              </div>
+              <pre className="inject-preview" aria-label="Injected context preview">
+                <code>{result.context_summary}</code>
+              </pre>
               <div className="decision-list">
                 {result.injected_decisions.map((d, i) => (
                   <DecisionCard key={d.event_id} decision={d} defaultOpen={i === 0} />

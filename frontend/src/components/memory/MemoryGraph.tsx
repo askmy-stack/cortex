@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { DecisionResult } from "../../types";
 import { truncate } from "../../lib/format";
+import { StateView } from "../ui/StateView";
+import { IconGraph } from "../ui/icons";
 
 type GraphNode = {
   id: string;
@@ -25,76 +27,94 @@ function graphDimensions(decisionCount: number): { w: number; h: number } {
 }
 
 export function MemoryGraph({ decisions, focusId, onFocus }: Props) {
+  const [hoverId, setHoverId] = useState<string | null>(null);
   const { w, h } = graphDimensions(decisions.length);
   const { nodes, edges } = useMemo(
     () => buildGraph(decisions, focusId, w, h),
     [decisions, focusId, w, h],
   );
 
+  const hoverNode = nodes.find((n) => n.id === hoverId);
+
   if (decisions.length === 0) {
     return (
-      <div className="graph-empty">
-        <p>Search for decisions to see how people, systems, and choices connect.</p>
-      </div>
+      <StateView icon={<IconGraph size={28} />} title="No graph data yet">
+        Search for decisions to see how people, systems, and choices connect.
+      </StateView>
     );
   }
 
   return (
     <div className="memory-graph" role="group" aria-label="Memory relationship map">
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        className="memory-graph__svg"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <defs>
-          <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="var(--accent-violet)" stopOpacity="0.5" />
-          </linearGradient>
-        </defs>
-        {edges.map((e) => {
-          const a = nodes.find((n) => n.id === e.from);
-          const b = nodes.find((n) => n.id === e.to);
-          if (!a || !b) return null;
-          return (
-            <line
-              key={`${e.from}-${e.to}`}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              className="memory-graph__edge"
-              stroke="url(#edgeGrad)"
-            />
-          );
-        })}
-        {nodes.map((n) => (
-          <g
-            key={n.id}
-            className={`memory-graph__node memory-graph__node--${n.kind} ${
-              focusId === n.id ? "memory-graph__node--focus" : ""
-            }`}
-            transform={`translate(${n.x}, ${n.y})`}
-            onClick={() => onFocus?.(n.id)}
-            style={{ cursor: onFocus ? "pointer" : "default" }}
-            role="button"
-            tabIndex={0}
-            aria-label={`${n.kind}: ${n.label}`}
-            aria-pressed={focusId === n.id}
-            onKeyDown={(ev) => {
-              if (ev.key === "Enter" || ev.key === " ") {
-                ev.preventDefault();
-                onFocus?.(n.id);
-              }
-            }}
-          >
-            <circle r={n.kind === "decision" ? 28 : 18} className="memory-graph__circle" />
-            <text className="memory-graph__label" textAnchor="middle" dy={n.kind === "decision" ? 44 : 32}>
-              {truncate(n.label, n.kind === "decision" ? 28 : 14)}
-            </text>
-          </g>
-        ))}
-      </svg>
+      {hoverNode ? (
+        <div className="memory-graph__tooltip" role="tooltip">
+          <strong>{hoverNode.kind}</strong> · {hoverNode.label}
+        </div>
+      ) : null}
+      <div className="memory-graph__scroll">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="memory-graph__svg"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <defs>
+            <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="var(--accent-violet)" stopOpacity="0.5" />
+            </linearGradient>
+          </defs>
+          {edges.map((e) => {
+            const a = nodes.find((n) => n.id === e.from);
+            const b = nodes.find((n) => n.id === e.to);
+            if (!a || !b) return null;
+            return (
+              <line
+                key={`${e.from}-${e.to}`}
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                className="memory-graph__edge"
+                stroke="url(#edgeGrad)"
+              />
+            );
+          })}
+          {nodes.map((n) => (
+            <g
+              key={n.id}
+              className={`memory-graph__node memory-graph__node--${n.kind} ${
+                focusId === n.id ? "memory-graph__node--focus" : ""
+              } ${hoverId === n.id ? "memory-graph__node--hover" : ""}`}
+              transform={`translate(${n.x}, ${n.y})`}
+              onClick={() => onFocus?.(n.id)}
+              onMouseEnter={() => setHoverId(n.id)}
+              onMouseLeave={() => setHoverId(null)}
+              onFocus={() => setHoverId(n.id)}
+              onBlur={() => setHoverId(null)}
+              style={{ cursor: onFocus ? "pointer" : "default" }}
+              role="button"
+              tabIndex={0}
+              aria-label={`${n.kind}: ${n.label}`}
+              aria-pressed={focusId === n.id}
+              onKeyDown={(ev) => {
+                if (ev.key === "Enter" || ev.key === " ") {
+                  ev.preventDefault();
+                  onFocus?.(n.id);
+                }
+              }}
+            >
+              <circle r={n.kind === "decision" ? 28 : 18} className="memory-graph__circle" />
+              <text
+                className="memory-graph__label"
+                textAnchor="middle"
+                dy={n.kind === "decision" ? 44 : 32}
+              >
+                {truncate(n.label, n.kind === "decision" ? 28 : 14)}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
       <div className="memory-graph__legend">
         <span>
           <i className="dot dot--decision" /> Decision

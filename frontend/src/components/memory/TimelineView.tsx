@@ -1,5 +1,7 @@
 import type { DecisionResult } from "../../types";
 import { formatRelativeTime, formatSource } from "../../lib/format";
+import { StateView } from "../ui/StateView";
+import { IconEmpty } from "../ui/icons";
 
 type Props = {
   decisions: DecisionResult[];
@@ -13,9 +15,9 @@ export function TimelineView({ decisions, onSelect }: Props) {
 
   if (sorted.length === 0) {
     return (
-      <section className="timeline-empty">
-        <p>Your organizational timeline will appear here after you search or load memories.</p>
-      </section>
+      <StateView icon={<IconEmpty size={28} />} title="Timeline is empty">
+        Your organizational timeline will appear here after you search or load memories.
+      </StateView>
     );
   }
 

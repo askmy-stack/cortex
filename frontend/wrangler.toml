@@ -1,0 +1,7 @@
+# Cloudflare Pages — optional Wrangler config (Plan A)
+# Primary path: connect Git in the Cloudflare dashboard (see docs/DEPLOY-FREE.md).
+# Build env: VITE_API_URL=https://your-api.onrender.com
+
+name = "cortex-dashboard"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"

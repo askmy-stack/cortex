@@ -32,7 +32,7 @@ export const WELCOME_MESSAGES: AssistantMessage[] = [
 export function summarizeQueryResults(response: QueryResponse): string {
   const { total, latency_ms, query, results } = response;
   if (total === 0) {
-    return `I searched your workspace memory for **"${query}"** but didn't find matching decisions yet. If you're on a fresh install, run \`make demo\` to seed example memories, or capture a decision with **Remember** via the API.`;
+    return `I searched your workspace memory for **"${query}"** but didn't find matching decisions yet. Connect your tools or capture a decision via **AI agents** to build organizational memory.`;
   }
 
   const top = results[0];

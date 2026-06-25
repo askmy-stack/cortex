@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import { IconEmpty } from "./icons";
 
 type Props = {
-  icon?: string;
+  icon?: ReactNode;
   title: string;
   children?: ReactNode;
   action?: ReactNode;
@@ -9,7 +10,8 @@ type Props = {
 };
 
 /** Empty / error / informational state shared across views. */
-export function StateView({ icon = "◇", title, children, action, tone = "neutral" }: Props) {
+export function StateView({ icon, title, children, action, tone = "neutral" }: Props) {
+  const glyph = icon ?? <IconEmpty size={28} />;
   return (
     <section
       className={`state-view ${tone === "error" ? "state-view--error" : ""}`}
@@ -17,11 +19,11 @@ export function StateView({ icon = "◇", title, children, action, tone = "neutr
       aria-live={tone === "error" ? "assertive" : "polite"}
     >
       <span className="state-view__icon" aria-hidden>
-        {icon}
+        {glyph}
       </span>
       <h3 className="state-view__title">{title}</h3>
-      {children ? <p className="state-view__body">{children}</p> : null}
-      {action ? <div style={{ marginTop: "0.75rem" }}>{action}</div> : null}
+      {children ? <div className="state-view__body">{children}</div> : null}
+      {action ? <div className="state-view__action">{action}</div> : null}
     </section>
   );
 }
