@@ -47,8 +47,14 @@ export function saveSettings(patch: Partial<CortexSettings>): CortexSettings {
   return next;
 }
 
+/** True when the dashboard is served from a public demo host (not localhost). */
 export function isLiveDemoHost(): boolean {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
-  return host.endsWith(".vercel.app") || host.includes("cortex");
+  return (
+    host.endsWith(".vercel.app") ||
+    host.endsWith(".pages.dev") ||
+    host.endsWith(".onrender.com") ||
+    host.includes("cortex")
+  );
 }

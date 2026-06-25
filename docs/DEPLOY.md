@@ -1,12 +1,14 @@
 # Deploying Cortex
 
-Cortex is a **multi-service stack** (Kafka, Neo4j, Redis, API, pipeline worker, dashboard). Vercel hosts the **dashboard only**; the API and worker run elsewhere.
+Cortex is a **multi-service stack** (Kafka, Neo4j, Redis, API, pipeline worker, dashboard). The **dashboard** is static (Vercel or Cloudflare Pages); the **API** runs on Render/Railway/etc.
+
+> **$0 portfolio deploy:** see **[DEPLOY-FREE.md](./DEPLOY-FREE.md)** — Cloudflare Pages + Render free + Aura + Upstash (no Kafka).
 
 ## Recommended split
 
 | Component | Host | Notes |
 |-----------|------|-------|
-| Dashboard | **Vercel** (`frontend/`) | Vite static + API rewrites |
+| Dashboard | **Cloudflare Pages** or **Vercel** (`frontend/`) | CF: `VITE_API_URL`; Vercel: `CORTEX_API_ORIGIN` middleware |
 | API | Railway / Render / Fly | `api/Dockerfile` |
 | pipeline-worker | Same as API | `pipeline/Dockerfile` |
 | Neo4j | Neo4j Aura | Bolt URI in env |
