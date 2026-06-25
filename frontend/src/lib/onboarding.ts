@@ -1,17 +1,29 @@
-const STORAGE_KEY = "cortex_onboarding_v1";
+import { loadSettings, saveSettings } from "./settings";
+
+const LEGACY_KEY = "cortex_onboarding_v1";
 
 export function hasCompletedOnboarding(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "done";
+    const settings = loadSettings();
+    if (settings.onboardingComplete) return true;
+    return localStorage.getItem(LEGACY_KEY) === "done";
   } catch {
     return false;
   }
 }
 
-export function markOnboardingComplete(): void {
+export function markOnboardingComplete(workspaceId?: string): void {
+  saveSettings({
+    onboardingComplete: true,
+    ...(workspaceId ? { workspaceId } : {}),
+  });
+}
+
+export function resetOnboarding(): void {
+  saveSettings({ onboardingComplete: false });
   try {
-    localStorage.setItem(STORAGE_KEY, "done");
+    localStorage.removeItem(LEGACY_KEY);
   } catch {
-    // Private browsing — skip persistence.
+    // ignore
   }
 }
