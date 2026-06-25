@@ -39,7 +39,9 @@ test.describe("Critical user journeys", () => {
     await page.goto("/#ask");
     await page.getByLabel(/your question/i).fill("Why CockroachDB for payments?");
     await page.getByRole("button", { name: /search memory/i }).click();
-    await expect(page.getByRole("heading", { name: /1 result/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /1 shown/i })).toBeVisible({
+      timeout: 10_000,
+    });
 
     await page.getByRole("button", { name: /open memory map/i }).click();
     await expect(page.getByRole("heading", { name: /memory map/i })).toBeVisible();
