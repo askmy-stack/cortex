@@ -1,0 +1,36 @@
+# Cortex API — Render Blueprint (Plan A free tier)
+# https://render.com/docs/blueprint-spec
+#
+# Dashboard: Cloudflare Pages (frontend/) — see docs/DEPLOY-FREE.md
+# Connect repo → New Blueprint → point at this file.
+# Fill secret env vars in the Render dashboard after first deploy.
+
+services:
+  - type: web
+    name: cortex-api
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        value: neo4j
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: CORTEX_API_KEYS
+        sync: false
+      - key: CORTEX_SEED_DEMO
+        value: "true"
+      - key: CORTEX_SEMANTIC_ENABLED
+        value: "false"
+      - key: EXTRACTION_BACKEND
+        value: heuristic

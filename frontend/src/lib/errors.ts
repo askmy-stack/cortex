@@ -2,8 +2,8 @@
 
 export function apiUnreachableMessage(): string {
   return (
-    "Cannot reach the Cortex API. Ensure Docker is running, then start the stack with " +
-    "`make demo` (API on port 8000). If you use the Vite dev server, it proxies to localhost:8000."
+    "Cannot reach the Cortex API. Check your Connection settings and confirm the API is running. " +
+    "For local development, start the stack and ensure the dashboard can reach port 8000."
   );
 }
 
@@ -44,6 +44,12 @@ export async function parseHttpError(response: Response): Promise<string> {
   if (response.status === 503) {
     const base = "Service unavailable (503). Neo4j or another dependency may be down.";
     return detail ? `${base} ${detail.slice(0, 120)}` : base;
+  }
+  if (response.status === 511 || detail.includes("Tunnel website ahead")) {
+    return (
+      "API tunnel blocked the request (511). Use same-origin /query via Vercel middleware " +
+      "(CORTEX_API_ORIGIN), not a tunnel URL in VITE_API_URL."
+    );
   }
   if (!detail) return `Request failed (${status})`;
   return `Request failed (${status}): ${detail.slice(0, 200)}`;
