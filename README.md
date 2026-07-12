@@ -7,9 +7,9 @@
 
 **The organizational memory operating system for AI-native companies.**
 
-> Give every AI agent in your organization the same context a senior engineer has — and keep it current as your organization evolves.
+> Give every AI agent in your organization the same context a senior engineer has and keep it current as your organization evolves.
 
-**Thesis:** AI tools are stateless. Organizations are not. Every agent starting from zero is a **memory infrastructure failure** — not a model failure.
+**Thesis:** AI tools are stateless. Organizations are not. Every agent starting from zero is a **memory infrastructure failure** not a model failure.
 
 <p align="center">
   <img src="docs/assets/cortex-memory-fabric.gif" alt="Cortex memory fabric: Slack and GitHub events flow through Kafka extraction into Neo4j and Redis, then inject decision context into agents" width="920" />
