@@ -1,8 +1,18 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
+import { resolveMcpAuth } from "./auth.js";
+
 const apiBaseUrl = process.env.CORTEX_API_URL ?? "http://localhost:8000";
-const apiKey = process.env.CORTEX_API_KEY?.trim() || "";
+const auth = resolveMcpAuth();
+
+if (auth.blocked) {
+  console.error(
+    "[cortex-mcp] ENVIRONMENT=production but CORTEX_API_KEY is not set. " +
+      "Refusing all tool calls until CORTEX_API_KEY is configured " +
+      "(see .env.example).",
+  );
+}
 
 const server = new McpServer({
   name: "cortex",
@@ -11,8 +21,8 @@ const server = new McpServer({
 
 function apiHeaders() {
   const headers = { "content-type": "application/json" };
-  if (apiKey) {
-    headers.authorization = `Bearer ${apiKey}`;
+  if (auth.apiKey) {
+    headers.authorization = `Bearer ${auth.apiKey}`;
   } else {
     headers["x-cortex-roles"] = process.env.CORTEX_CALLER_ROLES ?? "authenticated";
   }
@@ -20,6 +30,12 @@ function apiHeaders() {
 }
 
 async function postJson(path, body) {
+  if (auth.blocked) {
+    throw new Error(
+      "Cortex MCP auth error: ENVIRONMENT=production requires CORTEX_API_KEY " +
+        "to be set; refusing to call the Cortex API without it.",
+    );
+  }
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method: "POST",
     headers: apiHeaders(),
@@ -109,5 +125,12 @@ server.tool(
   },
 );
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+// Only start the stdio transport when run directly (not when imported by tests).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await main();
+}
