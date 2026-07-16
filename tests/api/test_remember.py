@@ -4,9 +4,18 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
+from api.remember import _producer, _reset_producer_for_tests
+
+
+@pytest.fixture(autouse=True)
+def _clear_producer_singleton() -> None:
+    _reset_producer_for_tests()
+    yield
+    _reset_producer_for_tests()
 
 
 @patch("api.remember._producer")
@@ -38,3 +47,15 @@ def test_remember_rejects_short_content() -> None:
         json={"workspace_id": "ws-1", "content": "too short"},
     )
     assert response.status_code == 422
+
+
+@patch("api.remember.Producer")
+def test_producer_is_lazy_singleton(mock_producer_cls: MagicMock) -> None:
+    """Same Producer instance is reused across calls; constructed once."""
+    mock_producer_cls.return_value = MagicMock(name="shared-producer")
+
+    first = _producer()
+    second = _producer()
+
+    assert first is second
+    mock_producer_cls.assert_called_once()
