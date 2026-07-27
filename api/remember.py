@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from datetime import UTC, datetime
 
 import structlog
@@ -18,6 +19,11 @@ log = structlog.get_logger(__name__)
 router = APIRouter(prefix="/remember", tags=["memory"])
 
 KAFKA_TOPIC = "cortex.raw.manual.events"
+
+# Module-level lazy singleton — one Producer for the process lifetime.
+# Matches connector pattern (SlackKafkaProducer keeps a long-lived client).
+_producer_lock = threading.Lock()
+_producer_instance: Producer | None = None
 
 
 class RememberRequest(BaseModel):
@@ -38,14 +44,28 @@ class RememberResponse(BaseModel):
 
 
 def _producer() -> Producer:
-    servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-    return Producer(
-        {
-            "bootstrap.servers": servers,
-            "acks": "all",
-            "enable.idempotence": True,
-        }
-    )
+    """Return the shared Kafka producer, creating it on first use."""
+    global _producer_instance
+    if _producer_instance is not None:
+        return _producer_instance
+    with _producer_lock:
+        if _producer_instance is None:
+            servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+            _producer_instance = Producer(
+                {
+                    "bootstrap.servers": servers,
+                    "acks": "all",
+                    "enable.idempotence": True,
+                }
+            )
+        return _producer_instance
+
+
+def _reset_producer_for_tests() -> None:
+    """Clear the singleton between tests (test helper only)."""
+    global _producer_instance
+    with _producer_lock:
+        _producer_instance = None
 
 
 @router.post(

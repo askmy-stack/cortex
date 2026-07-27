@@ -243,7 +243,7 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable distributed tracing (OpenTelemetry O
 | `GET` | `/decisions/by-system/{system_id}` | Recent decisions affecting a service |
 | `GET` | `/decisions/{id}/chain` | SUPERSEDES / trigger lineage |
 | `GET` | `/decisions/{id}/conflicts` | Contradiction preview on shared systems |
-| `POST` | `/remember` | Submit explicit memory → Kafka → extractor → graph |
+| `POST` | `/remember` | Submit explicit memory → Kafka → extractor → graph (shared lazy Kafka producer) |
 | `POST` | `/gdpr/erase` | GDPR Right to Erasure — cascade delete subject memory (`admin` / `gdpr_officer` / `legal`); invalidates per-workspace query cache |
 | `POST` | `/webhooks/slack`, `/github`, `/jira`, `/linear` | Connector ingress → Kafka |
 
