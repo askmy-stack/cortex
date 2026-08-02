@@ -22,6 +22,8 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from api.contradictions import router as contradictions_router
 from api.gdpr import router as gdpr_router
@@ -29,6 +31,7 @@ from api.metrics import record_http_request, record_query, render_metrics
 from api.decisions import router as decisions_router
 from api.deps import RolesDep, memory, set_memory_service
 from api.memory import MemoryService
+from api.rate_limit import inject_rate_limit, limiter, query_rate_limit
 from api.remember import router as remember_router
 from api.schemas import (
     DecisionResult,
@@ -75,6 +78,9 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Browsers reject `Access-Control-Allow-Origin: *` together with credentials.
 # Only enable credentials when an explicit origin allowlist is configured.
@@ -197,8 +203,11 @@ async def metrics() -> Response:
     summary="Query organizational memory",
     tags=["memory"],
 )
+@limiter.limit(query_rate_limit)
 async def query(
-    request: QueryRequest,
+    request: Request,
+    response: Response,
+    payload: QueryRequest,
     roles: RolesDep,
 ) -> QueryResponse:
     """Search organizational decisions by natural language query.
@@ -207,30 +216,31 @@ async def query(
 
     Decision: D-004 — Active context injection, not passive retrieval.
     RBAC: workspace_id scoped — cross-workspace results never returned.
+    Rate limited per IP (CORTEX_RATE_LIMIT_QUERY, default 30/minute).
     """
     t0 = time.time()
 
     log.info(
         "query.received",
-        query=request.query[:100],
-        workspace_id=request.workspace_id,
-        limit=request.limit,
+        query=payload.query[:100],
+        workspace_id=payload.workspace_id,
+        limit=payload.limit,
     )
 
     try:
         records = await memory().query_decisions(
-            query=request.query,
-            workspace_id=request.workspace_id,
-            limit=request.limit,
-            min_importance=request.min_importance,
-            min_trust=request.min_trust,
-            event_types=request.event_types,
+            query=payload.query,
+            workspace_id=payload.workspace_id,
+            limit=payload.limit,
+            min_importance=payload.min_importance,
+            min_trust=payload.min_trust,
+            event_types=payload.event_types,
             caller_roles=roles,
         )
         results = [DecisionResult(**record) for record in records]
     except Exception as exc:
         record_query(status="error", duration_s=time.time() - t0)
-        log.error("query.failed", error=str(exc), query=request.query[:100])
+        log.error("query.failed", error=str(exc), query=payload.query[:100])
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Graph query failed — Neo4j may be unavailable",
@@ -242,12 +252,12 @@ async def query(
         "query.complete",
         result_count=len(results),
         latency_ms=latency_ms,
-        workspace_id=request.workspace_id,
+        workspace_id=payload.workspace_id,
     )
 
     return QueryResponse(
-        query=request.query,
-        workspace_id=request.workspace_id,
+        query=payload.query,
+        workspace_id=payload.workspace_id,
         results=results,
         total=len(results),
         latency_ms=latency_ms,
@@ -260,8 +270,11 @@ async def query(
     summary="Active context injection for AI agents",
     tags=["memory"],
 )
+@limiter.limit(inject_rate_limit)
 async def inject(
-    request: InjectRequest,
+    request: Request,
+    response: Response,
+    payload: InjectRequest,
     roles: RolesDep,
 ) -> InjectResponse:
     """Inject relevant organizational memory into an AI agent's context window.
@@ -270,25 +283,26 @@ async def inject(
     Returns the most relevant decisions ranked by importance × trust × recency.
 
     Ranks injectable decisions by importance × trust (see scoring.trust_scorer).
+    Rate limited per IP (CORTEX_RATE_LIMIT_INJECT, default 60/minute).
     """
     t0 = time.time()
 
     log.info(
         "inject.received",
-        agent_id=request.agent_id,
-        workspace_id=request.workspace_id,
-        context_length=len(request.context),
+        agent_id=payload.agent_id,
+        workspace_id=payload.workspace_id,
+        context_length=len(payload.context),
     )
 
     try:
         injected = await memory().inject_decisions(
-            context=request.context,
-            workspace_id=request.workspace_id,
+            context=payload.context,
+            workspace_id=payload.workspace_id,
             caller_roles=roles,
-            limit=min(request.max_tokens // 400, 10),
+            limit=min(payload.max_tokens // 400, 10),
         )
     except Exception as exc:
-        log.error("inject.failed", error=str(exc), agent_id=request.agent_id)
+        log.error("inject.failed", error=str(exc), agent_id=payload.agent_id)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Context injection failed",
@@ -302,8 +316,8 @@ async def inject(
     token_estimate = sum(len(item.content.split()) for item in decisions) * 4 // 3
 
     return InjectResponse(
-        agent_id=request.agent_id,
-        workspace_id=request.workspace_id,
+        agent_id=payload.agent_id,
+        workspace_id=payload.workspace_id,
         injected_decisions=decisions,
         context_summary=summary,
         token_estimate=token_estimate,

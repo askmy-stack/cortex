@@ -66,6 +66,31 @@ def test_query_endpoint_uses_memory_service() -> None:
     assert payload["results"][0]["made_by"] == ["alice@company.com"]
 
 
+def test_query_rate_limit_returns_429(monkeypatch) -> None:
+    monkeypatch.setenv("CORTEX_RATE_LIMIT_QUERY", "2/minute")
+    # Re-bind limit callable so decorator sees the env override on next check.
+    from api import rate_limit as rl
+
+    client = TestClient(app)
+    mock_memory = AsyncMock(
+        query_decisions=AsyncMock(return_value=[]),
+    )
+    with patch("api.main.memory", return_value=mock_memory):
+        # Clear any prior hits for this client IP in the in-memory storage.
+        rl.limiter.reset()
+        for _ in range(2):
+            ok = client.post(
+                "/query",
+                json={"query": "rate limit probe", "workspace_id": "ws-1"},
+            )
+            assert ok.status_code == 200
+        limited = client.post(
+            "/query",
+            json={"query": "rate limit probe", "workspace_id": "ws-1"},
+        )
+    assert limited.status_code == 429
+
+
 def test_contradictions_pending() -> None:
     """Endpoint should return RBAC-filtered rows from the shared memory service."""
     client = TestClient(app)
