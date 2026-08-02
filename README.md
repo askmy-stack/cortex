@@ -422,6 +422,12 @@ Built on:
 
 ---
 
+## Contributing
+
+We welcome issues and pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md) for
+local setup (`make demo`), environment variables, and tests. Please follow our
+[Code of Conduct](CODE_OF_CONDUCT.md). Security reports: [SECURITY.md](SECURITY.md).
+
 ## License
 
 Apache 2.0 — use it, fork it, build on it.
