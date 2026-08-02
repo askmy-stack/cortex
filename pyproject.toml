@@ -45,6 +45,8 @@ dependencies = [
     # Auth
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
+    # Rate limiting
+    "slowapi>=0.1.9",
     # HTTP client
     "httpx>=0.27.0",
     # Utilities

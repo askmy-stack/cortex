@@ -237,8 +237,8 @@ This brings up Kafka, Neo4j, Redis, Postgres, applies graph migrations, writes t
 | `GET` | `/metrics` | Prometheus exposition (request + query latency histograms) |
 
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable distributed tracing (OpenTelemetry OTLP HTTP).
-| `POST` | `/query` | Decision search (Neo4j full-text + optional Qdrant merge when `CORTEX_SEMANTIC_ENABLED=true`) |
-| `POST` | `/inject` | Ranked context for agents |
+| `POST` | `/query` | Decision search (Neo4j full-text + optional Qdrant merge when `CORTEX_SEMANTIC_ENABLED=true`); rate limited per IP (`CORTEX_RATE_LIMIT_QUERY`, default `30/minute`) |
+| `POST` | `/inject` | Ranked context for agents; rate limited per IP (`CORTEX_RATE_LIMIT_INJECT`, default `60/minute`) |
 | `GET` | `/contradictions/pending` | Pending contradiction review items (`workspace_id` query param; `X-Cortex-Roles` for RBAC) |
 | `GET` | `/decisions/by-system/{system_id}` | Recent decisions affecting a service |
 | `GET` | `/decisions/{id}/chain` | SUPERSEDES / trigger lineage |
