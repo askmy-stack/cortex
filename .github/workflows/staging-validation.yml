@@ -33,6 +33,9 @@ jobs:
       K6_DURATION: "20s"
       K6_P95_MS: "5000"
       MAX_P95_MS: "5000"
+      # k6 uses many VUs from one runner IP — raise limits for load test only
+      CORTEX_RATE_LIMIT_QUERY: "1000/minute"
+      CORTEX_RATE_LIMIT_INJECT: "1000/minute"
     steps:
       - uses: actions/checkout@v4
 
