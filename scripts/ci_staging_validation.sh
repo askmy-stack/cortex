@@ -19,6 +19,19 @@ if [[ ! -f .env ]]; then
   cp .env.example .env
 fi
 
+# Staging/k6 shares one runner IP across many VUs; raise limits so load tests
+# exercise latency, not the production per-IP abuse caps.
+CORTEX_RATE_LIMIT_QUERY="${CORTEX_RATE_LIMIT_QUERY:-1000/minute}"
+CORTEX_RATE_LIMIT_INJECT="${CORTEX_RATE_LIMIT_INJECT:-1000/minute}"
+for var in CORTEX_RATE_LIMIT_QUERY CORTEX_RATE_LIMIT_INJECT; do
+  val="${!var}"
+  if grep -q "^${var}=" .env; then
+    sed -i.bak "s|^${var}=.*|${var}=${val}|" .env && rm -f .env.bak
+  else
+    echo "${var}=${val}" >> .env
+  fi
+done
+
 echo "==> Starting infrastructure"
 docker compose up -d --wait --wait-timeout 600 zookeeper kafka neo4j redis postgres
 
