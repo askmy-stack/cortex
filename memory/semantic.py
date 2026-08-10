@@ -116,3 +116,33 @@ def search_decision_ids(query: str, workspace_id: str, limit: int) -> list[str]:
         ),
     )
     return [str(hit.payload.get("event_id", "")) for hit in hits if hit.payload]
+
+
+def delete_decision_vectors(decision_ids: list[str], workspace_id: str) -> int:
+    """Remove Qdrant points for erased decision event ids.
+
+    Point ids are deterministic ``uuid5(NAMESPACE_URL, event_id)`` (see upsert).
+    Returns the number of ids submitted for deletion (0 when semantic store is off).
+    """
+    client = _client()
+    if client is None or not decision_ids:
+        return 0
+    point_ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, eid)) for eid in decision_ids]
+    try:
+        client.delete(collection_name=_COLLECTION, points_selector=point_ids)
+    except Exception as exc:
+        log.warning(
+            "semantic.delete_failed",
+            error=str(exc),
+            workspace_id=workspace_id,
+            count=len(point_ids),
+        )
+        return 0
+    log.info(
+        "semantic.delete",
+        workspace_id=workspace_id,
+        deleted=len(point_ids),
+        collection=_COLLECTION,
+    )
+    return len(point_ids)
+

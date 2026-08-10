@@ -12,7 +12,12 @@ import structlog
 
 from graph.gdpr import GdprErasureService
 from graph.query import GraphQueryService
-from memory.semantic import search_decision_ids, semantic_enabled
+from memory.episodic import purge_raw_events_for_person
+from memory.semantic import (
+    delete_decision_vectors,
+    search_decision_ids,
+    semantic_enabled,
+)
 from scoring.trust_scorer import is_injectable
 
 log = structlog.get_logger(__name__)
@@ -258,6 +263,16 @@ class MemoryService:
             caller_roles=caller_roles,
             reason=reason,
         )
+        vectors_deleted = await asyncio.to_thread(
+            delete_decision_vectors,
+            list(result.decision_ids),
+            workspace_id,
+        )
+        raw_events_deleted = await asyncio.to_thread(
+            purge_raw_events_for_person,
+            workspace_id,
+            person_id,
+        )
         self.invalidate_workspace_cache(workspace_id)
         return {
             "audit_id": result.audit_id,
@@ -265,6 +280,8 @@ class MemoryService:
             "person_id": result.person_id,
             "decisions_deleted": result.decisions_deleted,
             "requested_by": result.requested_by,
+            "vectors_deleted": vectors_deleted,
+            "raw_events_deleted": raw_events_deleted,
         }
 
     async def neo4j_health(self) -> str:
