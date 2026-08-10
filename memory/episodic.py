@@ -76,3 +76,47 @@ def append_raw_event(raw: RawEvent) -> None:
     if _timescale_dsn() is None:
         return
     asyncio.run(_append_async(raw))
+
+
+async def _purge_raw_events_async(workspace_id: str, person_id: str) -> int:
+    import asyncpg
+
+    dsn = _timescale_dsn()
+    if dsn is None:
+        return 0
+    conn = await asyncpg.connect(dsn)
+    try:
+        await _ensure_table(conn)
+        # RawEvent.author is the canonical person id; also catch nested metadata.
+        result = await conn.execute(
+            """
+            DELETE FROM cortex_raw_events
+            WHERE workspace_id = $1
+              AND (
+                payload->>'author' = $2
+                OR payload->'metadata'->>'author' = $2
+                OR payload->'metadata'->>'user_id' = $2
+              )
+            """,
+            workspace_id,
+            person_id,
+        )
+        # asyncpg returns "DELETE N"
+        deleted = int(result.split()[-1]) if result else 0
+        log.info(
+            "episodic.purge",
+            workspace_id=workspace_id,
+            person_id=person_id,
+            deleted=deleted,
+        )
+        return deleted
+    finally:
+        await conn.close()
+
+
+def purge_raw_events_for_person(workspace_id: str, person_id: str) -> int:
+    """Delete Timescale RawEvent rows authored by ``person_id`` in the workspace."""
+    if _timescale_dsn() is None:
+        return 0
+    return asyncio.run(_purge_raw_events_async(workspace_id, person_id))
+
