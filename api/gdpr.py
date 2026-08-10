@@ -40,6 +40,8 @@ class GdprEraseResponse(BaseModel):
     person_id: str
     decisions_deleted: int
     requested_by: str
+    vectors_deleted: int = 0
+    raw_events_deleted: int = 0
 
 
 @router.post(

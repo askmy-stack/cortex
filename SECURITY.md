@@ -41,7 +41,7 @@ Cortex does not yet have tagged releases; security fixes are applied to the
 
 `POST /gdpr/erase` (`api/gdpr.py`) cascades deletes for a person across
 Decisions, Rationales, and Contradictions in the knowledge graph, and writes
-a `GdprAuditLog` entry. It requires the `admin`, `gdpr_officer`, or `legal`
+a `GdprAuditLog` entry, deletes matching Qdrant decision vectors, and purges TimescaleDB `cortex_raw_events` rows for that author. It requires the `admin`, `gdpr_officer`, or `legal`
 role — protect `CORTEX_API_KEYS` accordingly, since anyone who can obtain one
 of those roles can erase organizational memory.
 

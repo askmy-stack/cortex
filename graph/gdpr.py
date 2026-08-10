@@ -74,6 +74,7 @@ class GdprErasureResult:
     person_id: str
     decisions_deleted: int
     requested_by: str
+    decision_ids: tuple[str, ...] = ()
 
 
 class GdprErasureService:
@@ -218,4 +219,5 @@ class GdprErasureService:
             person_id=person_id,
             decisions_deleted=len(decision_ids),
             requested_by=requested_by,
+            decision_ids=tuple(decision_ids),
         )
