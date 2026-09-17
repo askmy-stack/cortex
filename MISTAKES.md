@@ -86,14 +86,12 @@
 ### [M-006] — 2026-05-11 — No demo video in initial scope
 **Phase:** Phase 0
 **Type:** Product / Process
-**What happened:** Launch plan included HN post and LinkedIn post. No demo video or animated GIF for README.
-**Why it happened:** Focused on technical build, not distribution.
-**Impact:** Open-source repos without demo GIFs get significantly fewer stars. HN "Show HN" posts without live demos get fewer upvotes. The technical work becomes invisible.
-**Fix / Learning:** Week 4 deliverable must include:
-- 3-minute Loom demo video (new engineer asking Cursor "why CockroachDB?" → Cortex returns full decision history)
-- Animated GIF for README (same scenario, compressed to 30 seconds)
-- Plan this in advance — not bolted on after the fact
-**Prevents:** Shipping a working product that nobody engages with.
+**Status:** SUPERSEDED 2026-09-17 — demo video / Loom / Show HN / LinkedIn launch posts removed from scope
+**What happened:** Launch plan originally included HN/LinkedIn posts and a Loom demo video plus README GIF.
+**Why it happened:** Focused on technical build, then over-indexed on distribution checklist items.
+**Impact:** Open checklist items blocked Phase 7 closure even after live demo URL + README GIF shipped.
+**Fix / Learning:** Phase 7 closes on live demo URL + README polish (including generated memory-fabric GIF). Do not block product work on manual video recording or social announcement posts.
+**Prevents:** Scope creep that keeps “launch” forever open after the product is demo-able.
 
 ---
 
@@ -140,5 +138,5 @@
 
 ### [L-005] — 2026-05-11 — Four-week MVP discipline
 **What:** Full architecture includes trust scorer, RBAC, contradiction detector, decay engine, outcome tracker, behavioral mining, federated memory. If all of that is Phase 1, nothing ships.
-**Why it matters:** Portfolio project needs a demo in 4 weeks. Open-source project needs stars in 5 weeks. The job search timeline is real. MVP is: Slack + GitHub connectors + Neo4j graph + MCP server + basic dashboard + demo video. Everything else is post-launch.
+**Why it matters:** Portfolio project needs a working demo in 4 weeks. The job search timeline is real. MVP is: Slack + GitHub connectors + Neo4j graph + MCP server + basic dashboard + live demo URL. Everything else is post-launch.
 **Apply to:** Every temptation to add "just one more feature" before shipping — check the 4-week constraint first.

@@ -197,13 +197,12 @@
 
 ### State at end
 - 207 pytest tests passing
-- Phase 7 launch items (video, HN post) remain manual owner tasks
+- Phase 7 focus: live demo URL + README polish (demo video / social launch posts out of scope)
 
 ### Next session starts with
 1. ~~Run `python -m graph.migrate` (apply V006)~~ — superseded: migrations through **V007**; use `make demo` or `python -m graph.migrate` after schema changes (see Session 4).
 2. `docker compose --profile api up` and validate **webhook → worker → graph** on a dev workspace (Slack/GitHub tokens in `.env`).
-3. Phase 7: screen recording + README GIF — follow [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md).
-
+3. Phase 7: public live demo URL in README + README polish.
 ---
 
 ## Session 3 — 2026-05-14
@@ -239,16 +238,15 @@
 - `graph/migrations` — **V007** fulltext repair; **V001–V006** `SchemaVersion` **MERGE (v {version}) SET** (stable identity); **V001** dropped Enterprise-only property-existence constraint for Neo4j Community
 - `.github/workflows/ci.yml` — **pytest** + **`scripts/seed_demo.py --dry-run`** on Python 3.11
 - `tests/graph/test_migrate_strip.py` — unit tests for migration chunk stripping
-- `docs/DEMO_RECORDING.md` — Phase 7 recording / GIF checklist; README links to it
 - `docs/CONNECTOR_VALIDATION.md` — webhook → Kafka validation steps (GitHub / Slack / Jira); README links to it
 
 ### State at end
 - **213** pytest passes; CI workflow ready for GitHub Actions on `main` / `develop` / PRs
 
 ### Next session starts with
-1. **Owner:** Record demo + GIF per [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md); add link in README when hosted
-2. **Live connector path:** Slack (or GitHub) webhook → Kafka → worker → graph on a real workspace (tokens in `.env`)
-3. **Optional:** Slim `api` Docker image (extras in `pyproject.toml`) so CI/local `docker compose build` is not dominated by Torch/spaCy unless needed for that image
+1. **Live connector path:** Slack (or GitHub) webhook → Kafka → worker → graph on a real workspace (tokens in `.env`)
+2. **Optional:** Slim `api` Docker image (extras in `pyproject.toml`) so CI/local `docker compose build` is not dominated by Torch/spaCy unless needed for that image
+3. Phase 7: public live demo URL + README polish
 
 ---
 
@@ -290,9 +288,9 @@
 - **228** pytest passes (~80% coverage)
 
 ### Next session starts with
-1. Owner demo recording ([docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md))
-2. Live webhook validation with real Slack/GitHub/Linear tokens
-3. Optional: graph explorer UI tab calling `/decisions/.../chain`
+1. Live webhook validation with real Slack/GitHub/Linear tokens
+2. Optional: graph explorer UI tab calling `/decisions/.../chain`
+3. Phase 7: public live demo URL + README polish
 
 ---
 
@@ -393,7 +391,7 @@
 ### Next session starts with
 1. Merge live E2E PR; configure real Slack app webhook
 2. Optional: slim pipeline-worker Docker image (worker-only deps)
-3. Demo recording per `docs/DEMO_RECORDING.md`
+3. Phase 7: public live demo URL + README polish
 
 ---
 
@@ -506,7 +504,7 @@
 ### Next session starts with
 1. Merge PR #14 after CI green
 2. LLM-backed CMVK verifiers (production)
-3. Phase 6: dashboard polish + demo video
+3. Phase 6: dashboard polish
 
 ---
 
@@ -526,7 +524,7 @@
 
 ### Next session starts with
 1. Merge PR #15 after CI green
-2. Phase 6: dashboard polish + demo video
+2. Phase 6: dashboard polish
 3. Staging smoke with `CORTEX_CMVK_BACKEND=openai`
 
 ---
@@ -554,7 +552,7 @@
 ### Next session starts with
 1. Merge `feat/ui-qa-a11y` → `main` PR when CI green
 2. Execute Plan A deploy per `docs/DEPLOY-FREE.md`
-3. Phase 7: live demo URL in README + 3-minute demo video
+3. Phase 7: live demo URL in README
 
 ---
 
@@ -576,5 +574,30 @@
 
 ### Next session starts with
 1. Set `CORTEX_API_ORIGIN` on Vercel after Render API deploy (Plan A)
-2. Record 3-minute demo video per `docs/DEMO_RECORDING.md`
-3. GitHub release tag `v0.1.0` + open-source announcement
+2. Phase 8: coverage scorer + outcome linker
+3. High-priority OSS backlog: #33 cache invalidation, #36 decay scheduler
+
+---
+
+## Session — 2026-09-17 — Remove demo video / launch announcement scope
+**Duration:** ~20m
+**Phase:** Phase 7 closeout → Phase 8
+
+### Built
+- Deleted **`docs/DEMO_RECORDING.md`** (Loom / video / GIF recording checklist out of scope)
+- Removed demo-video, `v0.1.0` tag, Show HN / LinkedIn / open-source announcement from operating docs
+- Marked Phase 7 complete (live demo URL + README polish); advanced current phase to Phase 8
+- Updated: `README.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `DECISIONS.md` (D-012), `MISTAKES.md` (M-006 superseded, L-005), `docs/PRODUCTION_READINESS.md`, `SESSIONS.md` next-steps
+
+### State at end
+- Phase 7 no longer blocked on manual video or social launch posts
+- Remaining deploy ops: set `CORTEX_API_ORIGIN` for API-backed public demo
+- Next product work: Phase 8 coverage + outcomes
+
+### Decisions made
+- D-012 update: demo video / release tagging / social launch posts removed from Phase 7 scope
+
+### Next session starts with
+1. Set `CORTEX_API_ORIGIN` on Vercel after Render API deploy (Plan A)
+2. Implement coverage scorer (`coverage_score` on `/query`)
+3. Implement outcome linker (schema already in V004)
