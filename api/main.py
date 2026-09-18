@@ -26,6 +26,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from api.contradictions import router as contradictions_router
+from api.evidence import router as evidence_router
 from api.gdpr import router as gdpr_router
 from api.metrics import record_http_request, record_query, render_metrics
 from api.decisions import router as decisions_router
@@ -105,6 +106,7 @@ app.include_router(contradictions_router)
 app.include_router(gdpr_router)
 app.include_router(decisions_router)
 app.include_router(remember_router)
+app.include_router(evidence_router)
 
 
 @app.middleware("http")
