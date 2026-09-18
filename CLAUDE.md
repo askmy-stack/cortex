@@ -93,10 +93,10 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 
 ## Current Phase
 
-**Version:** **V1 closed** (Phases 0–7). Next work is **Cortex V2** — do not start V2 Phase 1 (data foundations) until V2 Phase 0 audit (`docs/CURRENT_STATE.md`) is merged.
-**Status:** V1 MVP shipped on `main` — connectors, pipeline, scoring, RBAC, GDPR, dashboard, MCP, live demo URL
-**Next:** V2 Phase 0 audit only (#67), then P0 Must Have (#68–#72, #77)
-**Target:** Formal V1 closeout docs + honest capability claims; V2 begins with gap report
+**Version:** **V1 closed**. **Cortex V2 — Phase 0** (repository audit) in progress / next merge.
+**Status:** V1 MVP on `main`. Spec + gap report: `docs/CORTEX_V2.md`, `docs/CURRENT_STATE.md`, `docs/V1_RELEASE.md`
+**Next:** After Phase 0 merges → V2 P0 Must Have starting at #68 (Claim/Evidence). **Do not start #68 until Phase 0 is on `main`.**
+**Target:** Honest baseline for Evidence Graph + Reliability Gate work
 
 ---
 

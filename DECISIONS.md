@@ -25,10 +25,10 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ### 2026-09-18 — Close V1 then V2 Phase 0 only
 Priority: HIGH
-Status: OPEN
+Status: IN PROGRESS — V1 closed (#79); Phase 0 docs in `cursor/v2-phase0-audit-b994`
 Detail:
 - V1 = phases 0–7. Do not treat coverage/outcomes/meetings as V1 deliverables.
-- After V1 closeout merges: execute V2 Phase 0 (#67) only — `docs/CORTEX_V2.md` + `docs/CURRENT_STATE.md`.
+- V2 Phase 0 (#67): `docs/CORTEX_V2.md` + `docs/CURRENT_STATE.md` — no feature code.
 - Do **not** start V2 Phase 1 (Claim/Evidence migrations / #68) until Phase 0 is merged.
 
 ### 2026-06-10 — LLM-backed CMVK verifiers (production)
