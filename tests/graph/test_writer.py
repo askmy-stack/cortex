@@ -57,10 +57,11 @@ def _make_decision(
     affects: list[str] | None = None,
     rationale: list[str] | None = None,
     replaces: str | None = None,
+    workspace_id: str = WORKSPACE_ID,
 ) -> DecisionEvent:
     return DecisionEvent(
         source_raw_event_id="raw-event-id-001",
-        workspace_id=WORKSPACE_ID,
+        workspace_id=workspace_id,
         event_type="decision",
         content="We decided to migrate payments to CockroachDB.",
         made_by=["priya@company.com"] if made_by is None else made_by,
@@ -177,16 +178,30 @@ class TestWriteSuccess:
 
         return writer, mock_tx
 
+    def _write(self, writer: GraphWriter, decision: DecisionEvent) -> str:
+        """Write with cache-epoch bump mocked (unit tests do not need Redis)."""
+        with patch("graph.writer.bump_workspace_cache_epoch"):
+            return writer.write(decision)
+
     def test_returns_event_id_on_success(self) -> None:
         writer, _ = self._make_writer_with_mock_session()
         decision = _make_decision()
-        result = writer.write(decision)
+        with patch("graph.writer.bump_workspace_cache_epoch") as bump:
+            result = writer.write(decision)
         assert result == decision.event_id
+        bump.assert_called_once_with(decision.workspace_id)
+
+    def test_invalidates_query_cache_after_write(self) -> None:
+        writer, _ = self._make_writer_with_mock_session()
+        decision = _make_decision(workspace_id="ws-cache")
+        with patch("graph.writer.bump_workspace_cache_epoch") as bump:
+            writer.write(decision)
+        bump.assert_called_once_with("ws-cache")
 
     def test_decision_node_upsert_called(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision()
-        writer.write(decision)
+        self._write(writer, decision)
 
         calls = [str(c) for c in mock_tx.run.call_args_list]
         assert any("MERGE (d:Decision" in c for c in calls)
@@ -194,7 +209,7 @@ class TestWriteSuccess:
     def test_person_upsert_called_for_each_author(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision(made_by=["alice@", "bob@"])
-        writer.write(decision)
+        self._write(writer, decision)
 
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         person_calls = [c for c in cypher_calls if "MERGE (p:Person" in c]
@@ -203,7 +218,7 @@ class TestWriteSuccess:
     def test_system_upsert_called_for_each_system(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision(affects=["payments-service", "auth-service"])
-        writer.write(decision)
+        self._write(writer, decision)
 
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         system_calls = [c for c in cypher_calls if "MERGE (s:System" in c]
@@ -212,7 +227,7 @@ class TestWriteSuccess:
     def test_rationale_upsert_called_for_each_rationale(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision(rationale=["Reason A", "Reason B", "Reason C"])
-        writer.write(decision)
+        self._write(writer, decision)
 
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         rationale_calls = [c for c in cypher_calls if "MERGE (r:Rationale" in c]
@@ -221,7 +236,7 @@ class TestWriteSuccess:
     def test_supersedes_called_when_replaces_set(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision(replaces="prev-decision-id-001")
-        writer.write(decision)
+        self._write(writer, decision)
 
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         assert any("SUPERSEDES" in c for c in cypher_calls)
@@ -229,7 +244,7 @@ class TestWriteSuccess:
     def test_supersedes_not_called_when_replaces_none(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision(replaces=None)
-        writer.write(decision)
+        self._write(writer, decision)
 
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         assert not any("SUPERSEDES" in c for c in cypher_calls)
@@ -237,7 +252,7 @@ class TestWriteSuccess:
     def test_default_access_policy_applied(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision()
-        writer.write(decision)
+        self._write(writer, decision)
 
         # Find the Decision upsert call and check access_policy is present
         decision_call_kwargs = mock_tx.run.call_args_list[0][1]
@@ -255,7 +270,8 @@ class TestWriteSuccess:
             "classification": "confidential",
             "gdpr_subject": False,
         }
-        writer.write(decision, access_policy=custom_policy)
+        with patch("graph.writer.bump_workspace_cache_epoch"):
+            writer.write(decision, access_policy=custom_policy)
 
         decision_call_kwargs = mock_tx.run.call_args_list[0][1]
         assert "admin" in str(decision_call_kwargs["access_policy"])
@@ -263,7 +279,7 @@ class TestWriteSuccess:
     def test_no_person_calls_when_made_by_empty(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision(made_by=[])
-        writer.write(decision)
+        self._write(writer, decision)
 
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         person_calls = [c for c in cypher_calls if "MERGE (p:Person" in c]
@@ -272,7 +288,7 @@ class TestWriteSuccess:
     def test_no_system_calls_when_affects_empty(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
         decision = _make_decision(affects=[])
-        writer.write(decision)
+        self._write(writer, decision)
 
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         system_calls = [c for c in cypher_calls if "MERGE (s:System" in c]
@@ -281,19 +297,19 @@ class TestWriteSuccess:
     def test_minimum_above_threshold_writes_successfully(self) -> None:
         writer, _ = self._make_writer_with_mock_session()
         decision = _make_decision(importance_score=IMPORTANCE_DISCARD)
-        result = writer.write(decision)
+        result = self._write(writer, decision)
         assert result == decision.event_id
 
     def test_temporal_edges_include_invalid_at_on_rationale(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
-        writer.write(_make_decision(rationale=["Because scale"]))
+        self._write(writer, _make_decision(rationale=["Because scale"]))
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         rationale_link = next(c for c in cypher_calls if "HAS_RATIONALE" in c)
         assert "rel.invalid_at = null" in rationale_link
 
     def test_temporal_edges_include_invalid_at_on_supersedes(self) -> None:
         writer, mock_tx = self._make_writer_with_mock_session()
-        writer.write(_make_decision(replaces="prev-decision-id-001"))
+        self._write(writer, _make_decision(replaces="prev-decision-id-001"))
         cypher_calls = [c[0][0] for c in mock_tx.run.call_args_list]
         supersedes_link = next(c for c in cypher_calls if "SUPERSEDES" in c)
         assert "r.invalid_at = null" in supersedes_link

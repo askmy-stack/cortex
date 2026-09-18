@@ -341,6 +341,37 @@ services:
         condition: service_healthy
     profiles: ["api"]
 
+  decay-worker:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: cortex-decay-worker
+    restart: unless-stopped
+    networks: [cortex]
+    env_file: .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      PYTHONPATH: /app
+      # Interval between decay batches (seconds). Default 24h for local/demo.
+      CORTEX_DECAY_INTERVAL_SECONDS: ${CORTEX_DECAY_INTERVAL_SECONDS:-86400}
+    volumes:
+      - ./:/app
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    # Periodic batch: run decay engine then sleep. Uses api image (Python deps).
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        INTERVAL="$${CORTEX_DECAY_INTERVAL_SECONDS:-86400}"
+        echo "cortex-decay-worker: interval=$${INTERVAL}s"
+        while true; do
+          python -m intelligence.decay_engine || echo "decay_engine failed; will retry after sleep"
+          sleep "$${INTERVAL}"
+        done
+    profiles: ["api"]
+
   api:
     build:
       context: .

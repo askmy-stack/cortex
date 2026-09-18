@@ -12,6 +12,10 @@ import structlog
 
 from graph.gdpr import GdprErasureService
 from graph.query import GraphQueryService
+from memory.cache_epoch import (
+    bump_workspace_cache_epoch,
+    workspace_cache_epoch_key,
+)
 from memory.episodic import purge_raw_events_for_person
 from memory.semantic import (
     delete_decision_vectors,
@@ -21,8 +25,6 @@ from memory.semantic import (
 from scoring.trust_scorer import is_injectable
 
 log = structlog.get_logger(__name__)
-
-_WORKSPACE_CACHE_EPOCH_PREFIX = "cortex:ws:"
 
 
 class MemoryService:
@@ -54,20 +56,15 @@ class MemoryService:
             return None
 
     def _workspace_cache_epoch(self, workspace_id: str) -> int:
-        """Per-workspace cache generation — bumped on GDPR erasure."""
+        """Per-workspace cache generation — bumped on GDPR erase and graph writes."""
         if self._redis is None:
             return 0
-        key = f"{_WORKSPACE_CACHE_EPOCH_PREFIX}{workspace_id}:cache_epoch"
-        raw = self._redis.get(key)
+        raw = self._redis.get(workspace_cache_epoch_key(workspace_id))
         return int(raw) if raw else 0
 
     def invalidate_workspace_cache(self, workspace_id: str) -> None:
-        """Drop cached query results for a workspace (e.g. after GDPR erasure)."""
-        if self._redis is None:
-            return
-        key = f"{_WORKSPACE_CACHE_EPOCH_PREFIX}{workspace_id}:cache_epoch"
-        self._redis.incr(key)
-        log.info("memory.cache.invalidated", workspace_id=workspace_id)
+        """Drop cached query results for a workspace (GDPR erase or after writes)."""
+        bump_workspace_cache_epoch(workspace_id, redis_client=self._redis)
 
     def _cache_key(self, prefix: str, payload: dict[str, Any]) -> str:
         workspace_id = str(payload.get("workspace_id", ""))

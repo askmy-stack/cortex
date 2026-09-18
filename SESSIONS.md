@@ -601,3 +601,29 @@
 1. Set `CORTEX_API_ORIGIN` on Vercel after Render API deploy (Plan A)
 2. Implement coverage scorer (`coverage_score` on `/query`)
 3. Implement outcome linker (schema already in V004)
+
+---
+
+## Session — 2026-09-18 — V1 closeout polish
+**Duration:** ~1h
+**Phase:** V1 close (phases 0–7) before Cortex V2 Phase 0
+
+### Built
+- Merged PR #59 (demo video / launch announcement removal)
+- **#33:** `memory/cache_epoch.py` + `GraphWriter` bumps Redis cache epoch on successful writes
+- **#36:** Compose `decay-worker` under `api` profile (`CORTEX_DECAY_INTERVAL_SECONDS`)
+- README / ARCHITECTURE honesty — drop overclaimed meetings, coverage, outcomes as shipped
+- `docs/V1_RELEASE.md` — formal V1 close; Phase 8–10 folded into V2
+- CLAUDE.md: V1 closed; next is V2 Phase 0 only (no V2 Phase 1 yet)
+
+### State at end
+- V1 MVP formally closed pending this PR merge
+- Next: V2 Phase 0 audit only (#67) — CURRENT_STATE.md + CORTEX_V2.md
+
+### Decisions made
+- D-018 — Close V1 at phases 0–7; defer coverage/outcomes/meetings to V2
+
+### Next session starts with
+1. Merge V1 closeout PR
+2. V2 Phase 0 only: `docs/CORTEX_V2.md` + `docs/CURRENT_STATE.md` (#67)
+3. Do **not** start Claim/Evidence migrations until Phase 0 merges
