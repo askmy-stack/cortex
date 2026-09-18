@@ -5,9 +5,9 @@
 
 ---
 
-## Current Version: v0.1 — Design Phase
-**Status:** Design only — no code written
-**Date:** 2026-05-11
+## Current Version: v1.0 — Shipped MVP
+**Status:** V1 complete (Phases 0–7). Cortex V2 (memory control plane) starts after Phase 0 audit — see `docs/CORTEX_V2.md` / `docs/CURRENT_STATE.md`.
+**Date:** 2026-09-18
 **Research foundation:** MAGMA (arXiv:2601.03236), Zep/Graphiti (arXiv:2501.13956), A-MEM (NeurIPS 2025), Field-Theoretic Memory (arXiv:2602.21220), SSGM Framework (arXiv:2603.11768)
 
 ---
@@ -792,6 +792,7 @@ Done when:
 
 | Version | Date | Changes |
 |---|---|---|
+| v1.0 | 2026-09-18 | V1 closeout — shipped MVP status; Phase 8–10 folded into V2 |
 | v0.1 | 2026-05-11 | Initial architecture design — Session 0 |
 
 ---

@@ -90,18 +90,18 @@ When any agent touches the payments service, Cortex enriches its context automat
 
 | Capability | Description |
 |---|---|
-| **Decision capture** | Extracts structured decisions from Slack, GitHub, Jira, Linear, meetings |
-| **Knowledge graph** | Neo4j graph: Decision → Person → System → Exception → Outcome |
+| **Decision capture** | Extracts structured decisions from Slack, GitHub, Jira, Linear |
+| **Knowledge graph** | Neo4j graph: Decision → Person → System → Exception (+ Outcome schema reserved) |
 | **Active injection** | Pushes relevant context to agents before they act — not after they ask |
 | **MCP server** | Native MCP endpoint — any Claude, Cursor, or MCP agent gets memory in one config line |
 | **Importance scoring** | Filters noise at ingestion — only signal reaches the graph |
 | **Trust scoring** | Bayesian confidence per memory node — bad inputs don't corrupt memory |
 | **Contradiction detection** | Flags when new events conflict with existing memory — no silent overwrites |
-| **Memory decay** | Old memory compresses and archives on a principled schedule |
-| **Coverage scoring** | Per-domain completeness estimate — agents know when memory is thin |
+| **Memory decay** | Batch decay engine; scheduled via `decay-worker` when the `api` Compose profile is up |
 | **RBAC** | Graph-level access control — contractors don't see salary decisions |
-| **Outcome tracking** | Links decisions to real metrics — memory becomes self-correcting |
 | **GDPR erasure** | Cascade delete with audit trail; query cache invalidated per workspace |
+
+**V1 scope note:** Coverage scoring, outcome linking, and meeting connectors are **not shipped in V1** — they are tracked for Cortex V2 (see `docs/CORTEX_V2.md` after Phase 0). Schema stubs for Outcome/coverage indices exist for forward compatibility.
 
 ---
 
@@ -111,7 +111,8 @@ These behaviors matter when Cortex runs behind auth in preview or production:
 
 | Concern | Behavior |
 |---|---|
-| **GDPR erasure** | `POST /gdpr/erase` bumps a per-workspace Redis cache epoch — stale PII cannot be served from `/query` for up to 60s |
+| **GDPR erasure** | `POST /gdpr/erase` bumps a per-workspace Redis cache epoch — stale PII cannot be served from `/query` |
+| **Pipeline writes** | Successful graph writes bump the same cache epoch — new decisions are not hidden behind a 60s stale cache |
 | **Dashboard proxy** | nginx on `:3000` forwards `/gdpr` (and `/query`, `/inject`, …) to the API — same-origin demos work |
 | **Demo smoke test** | `scripts/demo.sh` sources `.env` and sends `Authorization` when `CORTEX_DEMO_API_KEY` or `CORTEX_API_KEYS` is set |
 | **Pipeline retries** | Transient Neo4j errors do not commit Kafka offsets or land in DLQ — messages are redelivered |
@@ -144,7 +145,7 @@ After deploy, verify end-to-end: `./scripts/verify_free_deploy.sh --api https://
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  CAPTURE LAYER                                                │
-│  Slack · GitHub · Jira · Linear · Meetings · CI/CD          │
+│  Slack · GitHub · Jira · Linear  (Meetings / CI/CD → V2)    │
 │  Real-time event streams via webhooks + OAuth connectors     │
 └───────────────────────────────┬──────────────────────────────┘
                                 │ Kafka
@@ -161,19 +162,18 @@ After deploy, verify end-to-end: `./scripts/verify_free_deploy.sh --api https://
 │  Episodic    → TimescaleDB  what happened and when           │
 │  Semantic    → Qdrant       what things mean                 │
 │  Structural  → Neo4j        relationships + causal chains    │
-│  Procedural  → Neo4j        how things are done              │
 │  Hot cache   → Redis        <50ms retrieval for live agents  │
 └───────────────────────────────┬──────────────────────────────┘
                                 │
 ┌───────────────────────────────▼──────────────────────────────┐
 │  INTELLIGENCE LAYER                                           │
 │  Contradiction detector · Decay engine · Trust scorer       │
-│  Coverage scorer · Outcome linker · RBAC enforcer           │
+│  RBAC enforcer  (Coverage / Outcome linker → V2)            │
 └───────────────────────────────┬──────────────────────────────┘
                                 │
 ┌───────────────────────────────▼──────────────────────────────┐
 │  CONTEXT API                                                  │
-│  MCP server   · REST API · Python SDK · TypeScript SDK      │
+│  MCP server   · REST API · Python SDK                       │
 │  cortex.query() · cortex.inject() · cortex.remember()       │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -331,12 +331,12 @@ cortex/
 │   ├── jira/
 │   └── linear/
 ├── extraction/           # Decision extractor, entity resolver, classifier
-├── scoring/              # Importance scorer, trust scorer, coverage scorer
+├── scoring/              # Importance scorer, trust scorer, CMVK
 ├── graph/                # Neo4j schema, migrations, Cypher queries
 │   └── migrations/       # V001__initial_schema.cypher, etc.
 ├── pipeline/             # Kafka extraction worker (raw → graph)
-├── memory/               # Episodic (Timescale) + semantic (Qdrant) helpers
-├── intelligence/         # Contradiction detector, decay engine, outcome linker
+├── memory/               # Episodic (Timescale) + semantic (Qdrant) + cache epoch
+├── intelligence/         # Contradiction detector, decay engine
 ├── api/                  # FastAPI application
 ├── mcp/                  # MCP server (TypeScript)
 ├── sdk/                  # Python client (query, inject, remember)
@@ -388,9 +388,9 @@ cortex/
 | Phase 5 | Contradiction detector + decay engine | ✅ Shipped |
 | Phase 6 | React dashboard (Ask, memory map, guide, agent inject) | ✅ Shipped |
 | Phase 7 | Live demo URL + README polish | ✅ Done (wire `CORTEX_API_ORIGIN` for API-backed search) |
-| Phase 8 | Outcome tracking + coverage scoring | ⏳ Post-launch |
-| Phase 9 | Elicitation bot (implicit knowledge) | ⏳ Post-launch |
-| Phase 10 | Federated cross-org memory | ⏳ v2 |
+| **V1** | Phases 0–7 — organizational memory MVP | ✅ **Closed** |
+| V2 | Memory control plane (reliability gate, evidence, temporal, firewall) | ⏳ See `docs/CORTEX_V2.md` / issue #78 |
+| ~~Phase 8–10~~ | Coverage / outcomes / elicitation / federation | Folded into **Cortex V2** roadmap |
 
 **CI:** GitHub Actions runs `pytest` + seed dry-run on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 

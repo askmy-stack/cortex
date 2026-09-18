@@ -26,6 +26,7 @@ import structlog
 from neo4j import Driver, GraphDatabase
 
 from graph.rbac import serialize_access_policy
+from memory.cache_epoch import bump_workspace_cache_epoch
 from scoring.trust_scorer import is_writable
 from scoring.write_pipeline import assert_scored_for_write
 from shared.models import IMPORTANCE_DISCARD, DecisionEvent
@@ -226,6 +227,9 @@ class GraphWriter:
                 access_policy=serialized_policy,
                 valid_at=valid_at,
             )
+
+        # Invalidate Redis query/inject cache so new decisions are visible immediately.
+        bump_workspace_cache_epoch(decision.workspace_id)
 
         log.info(
             "graph.write.success",

@@ -23,6 +23,14 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ## ACTIVE INSTRUCTIONS
 
+### 2026-09-18 — Close V1 then V2 Phase 0 only
+Priority: HIGH
+Status: OPEN
+Detail:
+- V1 = phases 0–7. Do not treat coverage/outcomes/meetings as V1 deliverables.
+- After V1 closeout merges: execute V2 Phase 0 (#67) only — `docs/CORTEX_V2.md` + `docs/CURRENT_STATE.md`.
+- Do **not** start V2 Phase 1 (Claim/Evidence migrations / #68) until Phase 0 is merged.
+
 ### 2026-06-10 — LLM-backed CMVK verifiers (production)
 Priority: HIGH
 Status: DONE — `CORTEX_CMVK_BACKEND=openai|ollama` (2026-06-10)
@@ -283,6 +291,15 @@ access_policy: {
 
 ---
 
+### D-018 — 2026-09-18 — Close V1 at phases 0–7; defer remainder to V2
+**Status:** Active
+**Decision:** Cortex **V1** is complete at build phases 0–7 (connectors through live demo URL + README polish). Coverage scoring, outcome linking, meeting connectors, elicitation, and federation are **not** V1 — they move to the Cortex V2 roadmap (memory control plane). V1 closeout includes cache invalidation on graph writes (#33) and scheduled decay-worker (#36), plus README/ARCHITECTURE honesty.
+**Rationale:** README overclaimed Phase 8 features as shipped. Closing V1 on what actually works enables an honest V2 Phase 0 audit without pretending coverage/outcomes exist.
+**Alternatives rejected:** Keep calling Phase 8 "next" as V1 incomplete; ship stub `coverage_score` just to match README.
+**Owner:** Abhinaysai
+
+---
+
 ## PENDING DECISIONS (need resolution before build)
 
 | # | Decision needed | Options | Deadline | Status |
@@ -291,4 +308,4 @@ access_policy: {
 | P-002 | Local Slack message storage for testing | Real Slack workspace / Slack test fixture files | Before Phase 1 | Open |
 | P-003 | Neo4j hosting for production | Neo4j AuraDB free tier / Self-hosted EC2 | Before Phase 7 | Open |
 | P-004 | Dashboard visualization library | D3.js (full control) / React Flow (faster) | Before Phase 6 | Open |
-| P-005 | Meeting transcript connector | Recall.ai / AssemblyAI / Whisper self-hosted | Before Phase 8 | Open |
+| P-005 | Meeting transcript connector | Recall.ai / AssemblyAI / Whisper self-hosted | Before V2 | Open (see #64) |

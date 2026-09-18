@@ -93,10 +93,10 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 
 ## Current Phase
 
-**Phase:** 8 — Outcome tracking + coverage scoring
-**Status:** Phase 7 complete — live demo URL + README polish on `main` (set `CORTEX_API_ORIGIN` on Vercel for API-backed search)
-**Next phase:** Phase 8 deliverables (coverage scorer, outcome linker)
-**Target:** Coverage score on every query + outcome-linked decisions in the graph
+**Version:** **V1 closed** (Phases 0–7). Next work is **Cortex V2** — do not start V2 Phase 1 (data foundations) until V2 Phase 0 audit (`docs/CURRENT_STATE.md`) is merged.
+**Status:** V1 MVP shipped on `main` — connectors, pipeline, scoring, RBAC, GDPR, dashboard, MCP, live demo URL
+**Next:** V2 Phase 0 audit only (#67), then P0 Must Have (#68–#72, #77)
+**Target:** Formal V1 closeout docs + honest capability claims; V2 begins with gap report
 
 ---
 
@@ -112,9 +112,9 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 | 5 | Contradiction detector + decay engine | Week 3 | ✅ Done |
 | 6 | React dashboard + knowledge graph explorer | Week 3-4 | ✅ Done |
 | 7 | Live demo URL + README polish | Week 4 | ✅ Done |
-| 8 | Outcome tracking + coverage scoring | Post-launch | ⏳ |
-| 9 | Behavioral mining + elicitation bot | Post-launch | ⏳ |
-| 10 | Federated cross-org memory | v2 | ⏳ |
+| **V1** | Organizational memory MVP (phases 0–7) | — | ✅ **Closed** |
+| V2 | Memory control plane (see `docs/CORTEX_V2.md`) | — | ⏳ Phase 0 next |
+| ~~8–10~~ | Coverage / outcomes / elicitation / federation | — | Folded into V2 |
 
 ---
 
