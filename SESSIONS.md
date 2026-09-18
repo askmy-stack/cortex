@@ -627,3 +627,25 @@
 1. Merge V1 closeout PR
 2. V2 Phase 0 only: `docs/CORTEX_V2.md` + `docs/CURRENT_STATE.md` (#67)
 3. Do **not** start Claim/Evidence migrations until Phase 0 merges
+
+---
+
+## Session — 2026-09-18 — V2 Phase 0 audit
+**Duration:** ~30m
+**Phase:** Cortex V2 Phase 0 (no feature code)
+
+### Built
+- Merged V1 closeout PR #79
+- Checked in **`docs/CORTEX_V2.md`** (vNext implementation specification)
+- Produced **`docs/CURRENT_STATE.md`** — capability matrix, reuse points, README mismatches, module placement, locked order
+- Linked V2 docs from README roadmap + CLAUDE current phase
+- ACTIVE instruction: Phase 0 in progress; still block #68 until merge
+
+### State at end
+- Phase 0 docs ready for PR; **no** Claim/Evidence/Reliability Gate code
+- V1 remains closed on `main`
+
+### Next session starts with
+1. Merge Phase 0 PR; mark #67 done
+2. Then start V2 P0 #68 (Claim/Evidence data foundations) only
+3. Do not jump to Reliability Gate before Evidence + Temporal
