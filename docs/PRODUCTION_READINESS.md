@@ -221,8 +221,7 @@ Already present and correct: `.env`, `node_modules/`, `__pycache__/`, `.pytest_c
 - [ ] Push `feature/production-refinement`
 - [ ] Open PR → `main`
 - [ ] CI green on PR
-- [ ] Staging: `docker compose up` + seed + manual 3-min demo
-- [ ] Tag release `v0.1.0` (optional)
+- [ ] Staging: `docker compose up` + seed + manual demo walkthrough
 
 ---
 

@@ -93,10 +93,10 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 
 ## Current Phase
 
-**Phase:** 7 — Demo launch + open-source polish
-**Status:** Phase 6 dashboard stack complete on `feat/ui-qa-a11y`; merge to `main` in progress
-**Next phase:** Phase 8 — Outcome tracking + coverage scoring (post-launch)
-**Target:** Working public demo URL + README launch
+**Phase:** 8 — Outcome tracking + coverage scoring
+**Status:** Phase 7 complete — live demo URL + README polish on `main` (set `CORTEX_API_ORIGIN` on Vercel for API-backed search)
+**Next phase:** Phase 8 deliverables (coverage scorer, outcome linker)
+**Target:** Coverage score on every query + outcome-linked decisions in the graph
 
 ---
 
@@ -111,7 +111,7 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 | 4 | Importance scorer + trust scorer + RBAC | Week 2-3 | ✅ Done |
 | 5 | Contradiction detector + decay engine | Week 3 | ✅ Done |
 | 6 | React dashboard + knowledge graph explorer | Week 3-4 | ✅ Done |
-| 7 | Demo video + README polish + open-source launch | Week 4 | ⏳ |
+| 7 | Live demo URL + README polish | Week 4 | ✅ Done |
 | 8 | Outcome tracking + coverage scoring | Post-launch | ⏳ |
 | 9 | Behavioral mining + elicitation bot | Post-launch | ⏳ |
 | 10 | Federated cross-org memory | v2 | ⏳ |
@@ -127,8 +127,8 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 | Local LLM | Ollama + Gemma 4 E4B — ~10GB RAM, 8-12 tok/s CPU |
 | Secondary | MacBook Air (development), iPhone (SSH via Termius + Tailscale) |
 | Cloud budget | Minimize — free tiers only for MVP |
-| Timeline | 4-week MVP, open-source launch week 5 |
-| Portfolio goal | Demo-able in under 3 minutes. GitHub README must be self-explanatory. |
+| Timeline | 4-week MVP |
+| Portfolio goal | Demo-able via live URL + `make demo`. GitHub README must be self-explanatory. |
 
 ---
 

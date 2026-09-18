@@ -217,9 +217,9 @@ access_policy: {
 
 ---
 
-### D-012 — 2026-05-11 — 4-week MVP, open-source launch week 5
+### D-012 — 2026-05-11 — 4-week MVP
 **Status:** Active
-**Decision:** MVP shipped in 4 weeks. Open-source launch (HN, LinkedIn, dev.to) in week 5.
+**Decision:** MVP shipped in 4 weeks.
 **MVP scope:**
 - Slack + GitHub connectors
 - Decision extractor + importance scorer (basic)
@@ -227,11 +227,12 @@ access_policy: {
 - `cortex.query()` REST API
 - MCP server
 - React dashboard (read-only, graph explorer)
-- Demo video (3 min max)
-- README with animated GIF
+- README with memory-fabric GIF
+- Live demo URL
 **NOT in MVP:** Trust scorer, contradiction detector, decay engine, outcome tracker, Jira/Linear connectors, RBAC (basic auth only), elicitation bot
 **Rationale:** Ship something real. Extend after traction. The Jira connector, decay engine, and RBAC can be added as community contributions once the repo has stars.
 **Owner:** Abhinaysai
+**[UPDATE 2026-09-17]:** Demo video recording, release tagging, and social launch posts (Show HN / LinkedIn / Loom) are out of scope — removed from Phase 7 and operating docs.
 
 ---
 

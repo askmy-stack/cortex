@@ -751,28 +751,25 @@ Deliverables:
   frontend/ (React + D3.js or React Flow)
   Dashboard: decision timeline, coverage heatmap, contradiction queue
   Graph explorer: interactive Neo4j visualization
-  Animated GIF for README (demo scenario)
+  Animated GIF for README (demo scenario via generate_readme_demo_gif.py)
 
 Done when:
   Dashboard loads in < 2 seconds
   Graph explorer navigable without instructions
-  GIF captures the "new engineer asks why CockroachDB?" demo
+  README GIF captures the memory-fabric demo path
 ```
 
-### Phase 7 — Open-source launch (Week 5)
+### Phase 7 — Live demo + README polish (Week 5)
 ```
 Deliverables:
   README.md final polish
   docker-compose.yml tested on clean machine (no residual config)
-  3-minute Loom demo video
-  Animated GIF in README
-  Hacker News "Show HN" post
-  LinkedIn post
-  dev.to technical writeup
+  Public live demo URL
+  README memory-fabric GIF (scripts/generate_readme_demo_gif.py)
 
 Done when:
-  Fresh clone + docker-compose up + working demo in < 10 minutes
-  HN post submitted
+  Fresh clone + make demo + working local demo
+  Live dashboard URL linked from README
 ```
 
 ---

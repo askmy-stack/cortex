@@ -227,7 +227,7 @@ This brings up Kafka, Neo4j, Redis, Postgres, applies graph migrations, writes t
 
 **Dashboard looks stale?** The UI is served from a Docker image on port **3000**. Rebuild with `docker compose --profile api --profile frontend build frontend && docker compose --profile api --profile frontend up -d --force-recreate frontend`, then hard-refresh the browser (`Cmd+Shift+R`). For hot reload during UI work, run `cd frontend && npm run dev` → [http://localhost:5173](http://localhost:5173) (dev server uses **5173** so it does not clash with Docker).
 
-**Recording a video or GIF for the README:** see [docs/DEMO_RECORDING.md](docs/DEMO_RECORDING.md). **Validating real webhooks (Slack / GitHub / Jira):** [docs/CONNECTOR_VALIDATION.md](docs/CONNECTOR_VALIDATION.md).
+**Validating real webhooks (Slack / GitHub / Jira):** [docs/CONNECTOR_VALIDATION.md](docs/CONNECTOR_VALIDATION.md).
 
 ### Context API (REST)
 
@@ -387,7 +387,7 @@ cortex/
 | Phase 4 | Importance + trust scoring + graph RBAC | ✅ Shipped |
 | Phase 5 | Contradiction detector + decay engine | ✅ Shipped |
 | Phase 6 | React dashboard (Ask, memory map, guide, agent inject) | ✅ Shipped |
-| Phase 7 | Live demo URL + demo video + open-source launch | 🔄 In progress |
+| Phase 7 | Live demo URL + README polish | ✅ Done (wire `CORTEX_API_ORIGIN` for API-backed search) |
 | Phase 8 | Outcome tracking + coverage scoring | ⏳ Post-launch |
 | Phase 9 | Elicitation bot (implicit knowledge) | ⏳ Post-launch |
 | Phase 10 | Federated cross-org memory | ⏳ v2 |
