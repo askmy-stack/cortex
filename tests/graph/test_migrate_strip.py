@@ -15,6 +15,11 @@ def test_v009_rbac_enforcement_migration_registered() -> None:
     assert 9 in versions
 
 
+def test_v010_claim_evidence_migration_registered() -> None:
+    versions = {version for version, _, _ in get_migration_files()}
+    assert 10 in versions
+
+
 def test_strip_leading_comments_preserves_create_after_header() -> None:
     chunk = """// V005 — header
 // second line
