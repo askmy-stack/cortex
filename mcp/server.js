@@ -165,6 +165,38 @@ server.tool(
   },
 );
 
+server.tool(
+  "cortex_explain_memory",
+  {
+    description:
+      "Explain a claim: supporting/conflicting evidence, temporal validity, authority, confidence",
+    inputSchema: {
+      type: "object",
+      properties: {
+        claim_id: { type: "string" },
+        workspace_id: { type: "string" },
+      },
+      required: ["claim_id", "workspace_id"],
+    },
+  },
+  async ({ claim_id, workspace_id }) => {
+    if (auth.blocked) {
+      throw new Error(
+        "Cortex MCP auth error: ENVIRONMENT=production requires CORTEX_API_KEY",
+      );
+    }
+    const url = `${apiBaseUrl}/evidence/explain/${encodeURIComponent(claim_id)}?workspace_id=${encodeURIComponent(workspace_id)}`;
+    const response = await fetch(url, { headers: apiHeaders() });
+    if (!response.ok) {
+      throw new Error(`Cortex API /evidence/explain failed with ${response.status}`);
+    }
+    const payload = await response.json();
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    };
+  },
+);
+
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
