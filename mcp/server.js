@@ -125,6 +125,46 @@ server.tool(
   },
 );
 
+server.tool(
+  "cortex_evaluate",
+  {
+    description:
+      "Evaluate whether retrieved memory is reliable enough for a candidate agent action (Reliability Gate)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workspace_id: { type: "string" },
+        query: { type: "string" },
+        candidate_action: { type: "object" },
+        claims: { type: "array", items: { type: "object" } },
+        memories: { type: "array", items: { type: "object" } },
+        risk: { type: "string" },
+      },
+      required: ["workspace_id", "query"],
+    },
+  },
+  async ({
+    workspace_id,
+    query,
+    candidate_action = {},
+    claims = [],
+    memories = [],
+    risk,
+  }) => {
+    const payload = await postJson("/reliability/evaluate", {
+      workspace_id,
+      query,
+      candidate_action,
+      claims,
+      memories,
+      risk,
+    });
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    };
+  },
+);
+
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

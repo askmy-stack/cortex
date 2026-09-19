@@ -29,6 +29,7 @@ from api.contradictions import router as contradictions_router
 from api.evidence import router as evidence_router
 from api.gdpr import router as gdpr_router
 from api.memory_state import router as memory_state_router
+from api.reliability import router as reliability_router
 from api.metrics import record_http_request, record_query, render_metrics
 from api.decisions import router as decisions_router
 from api.deps import RolesDep, memory, set_memory_service
@@ -109,6 +110,7 @@ app.include_router(decisions_router)
 app.include_router(remember_router)
 app.include_router(evidence_router)
 app.include_router(memory_state_router)
+app.include_router(reliability_router)
 
 
 @app.middleware("http")
