@@ -31,6 +31,7 @@ from api.gdpr import router as gdpr_router
 from api.memory_state import router as memory_state_router
 from api.reliability import router as reliability_router
 from api.outcomes import router as outcomes_router
+from api.gaps import router as gaps_router
 from api.metrics import record_http_request, record_query, render_metrics
 from api.decisions import router as decisions_router
 from api.deps import RolesDep, memory, set_memory_service
@@ -113,6 +114,7 @@ app.include_router(evidence_router)
 app.include_router(memory_state_router)
 app.include_router(reliability_router)
 app.include_router(outcomes_router)
+app.include_router(gaps_router)
 
 
 @app.middleware("http")
