@@ -7,8 +7,10 @@ from firewall.write_guard import inspect_write
 
 
 def test_rejects_aws_key() -> None:
+    # Build at runtime so static secret scanners do not rewrite the fixture.
+    fake_key = "AKIA" + ("0" * 16)
     result = inspect_write(
-        content="key=FAKESECRET_g1h2i3j4k5l6m7n8o9p0",
+        content=f"deploy key={fake_key}",
         source="slack",
     )
     assert result.decision == "REJECT"
