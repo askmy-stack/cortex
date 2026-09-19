@@ -298,6 +298,12 @@ access_policy: {
 **Alternatives rejected:** Keep calling Phase 8 "next" as V1 incomplete; ship stub `coverage_score` just to match README.
 **Owner:** Abhinaysai
 
+### D-019 — 2026-09-18 — Claim/Evidence models alongside DecisionEvent (V2 foundations)
+**Status:** Active
+**Decision:** Add V2 `Claim` / `Evidence` / `ReliabilityDecision` models and Neo4j V010 schema. V1 `DecisionEvent` remains the Kafka write unit. Adapters in `evidence/adapters.py` map Decision → Claim+Evidence. Writers stay behind `CORTEX_EVIDENCE_GRAPH` (default false).
+**Rationale:** Enables Evidence Graph without breaking existing pipeline. Schema-first so migrations can apply in demo/prod before feature flag is on.
+**Owner:** Abhinaysai
+
 ---
 
 ## PENDING DECISIONS (need resolution before build)
