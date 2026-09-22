@@ -23,13 +23,21 @@ Agent picks up OPEN instructions at session start, executes, marks DONE.
 
 ## ACTIVE INSTRUCTIONS
 
+### 2026-09-22 — V2 hygiene closed; deepen hot path next
+Priority: HIGH
+Status: OPEN
+Detail:
+- V2 scaffold PRs #82–#91 are on `main`. Docs (`CURRENT_STATE.md`, CLAUDE.md, README) reflect scaffold ≠ finished control plane.
+- Close completed GitHub issues when permissions allow: #33, #36, #67–#77 (implementation landed). Keep #78 open until DoD / signature demo.
+- **Next build work:** wire Evidence/Firewall/Gate/coverage into write + `/query` + MCP inject; prove CORTEX_V2 §19 BLOCK+explain demo. Then #61, #65, #63, #64.
+
 ### 2026-09-18 — Close V1 then V2 Phase 0 only
 Priority: HIGH
-Status: DONE — V1 closed (#79); Phase 0 merged (#80) (2026-09-18)
+Status: DONE — V1 closed (#79); Phase 0 merged (#80); V2 scaffold #82–#91 on main (2026-09-22)
 Detail:
 - V1 = phases 0–7. Coverage/outcomes/meetings are V2, not V1.
 - Phase 0 delivered: `docs/CORTEX_V2.md` + `docs/CURRENT_STATE.md`.
-- Next allowed work: V2 P0 starting at #68 (Claim/Evidence). Do not skip to Reliability Gate before Evidence + Temporal.
+- P0–P2 scaffold implemented via #82–#91. Remaining: hot-path deepening (see 2026-09-22 instruction).
 
 ### 2026-06-10 — LLM-backed CMVK verifiers (production)
 Priority: HIGH

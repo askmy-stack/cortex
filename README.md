@@ -101,7 +101,7 @@ When any agent touches the payments service, Cortex enriches its context automat
 | **RBAC** | Graph-level access control — contractors don't see salary decisions |
 | **GDPR erasure** | Cascade delete with audit trail; query cache invalidated per workspace |
 
-**V1 scope note:** Coverage scoring, outcome linking, and meeting connectors are **not shipped in V1** — they are tracked for Cortex V2. See [docs/V1_RELEASE.md](docs/V1_RELEASE.md), [docs/CORTEX_V2.md](docs/CORTEX_V2.md), and [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md).
+**V1 / V2 honesty:** V1 = phases 0–7 (see [docs/V1_RELEASE.md](docs/V1_RELEASE.md)). Cortex V2 **modules and APIs are on `main`** (Evidence Graph behind flag, Temporal Truth, Reliability Gate, Firewall helpers, procedure models, outcome ledger, gaps/abstention, CortexBench baseline, MCP `cortex_evaluate` / `cortex_explain_memory`) — treat them as **scaffold**, not a finished control plane. Meeting connectors and full hot-path wiring remain open. Details: [docs/CORTEX_V2.md](docs/CORTEX_V2.md), [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md).
 
 ---
 
@@ -389,7 +389,7 @@ cortex/
 | Phase 6 | React dashboard (Ask, memory map, guide, agent inject) | ✅ Shipped |
 | Phase 7 | Live demo URL + README polish | ✅ Done (wire `CORTEX_API_ORIGIN` for API-backed search) |
 | **V1** | Phases 0–7 — organizational memory MVP | ✅ **Closed** — [docs/V1_RELEASE.md](docs/V1_RELEASE.md) |
-| V2 | Memory control plane | ⏳ Phase 0 audit — [docs/CORTEX_V2.md](docs/CORTEX_V2.md) · [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) · [#78](https://github.com/askmy-stack/cortex/issues/78) |
+| V2 | Memory control plane | ✅ Scaffold on `main` (#82–#91); ⏳ deepen hot path + signature demo — [docs/CORTEX_V2.md](docs/CORTEX_V2.md) · [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) · [#78](https://github.com/askmy-stack/cortex/issues/78) |
 | ~~Phase 8–10~~ | Coverage / outcomes / elicitation / federation | Folded into **Cortex V2** roadmap |
 
 **CI:** GitHub Actions runs `pytest` + seed dry-run on push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
