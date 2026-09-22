@@ -93,10 +93,10 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 
 ## Current Phase
 
-**Version:** **V1 closed**. **Cortex V2 — Phase 0 complete**; P0 Must Have is next.
-**Status:** Spec + gap report on `main`: `docs/CORTEX_V2.md`, `docs/CURRENT_STATE.md`, `docs/V1_RELEASE.md`
-**Next:** V2 P0 starting at #68 (Claim/Evidence data foundations). Do not skip to Reliability Gate before Evidence + Temporal.
-**Target:** Evidence Graph + Temporal Truth + Reliability Gate + CortexBench baseline
+**Version:** **V1 closed**. **Cortex V2 scaffold on `main`** (PRs #82–#91).
+**Status:** Spec + state: `docs/CORTEX_V2.md`, `docs/CURRENT_STATE.md`, `docs/V1_RELEASE.md`
+**Next:** Deepen V2 hot path (Evidence/Firewall/Gate/coverage on write + `/query` + MCP inject) and prove the signature BLOCK + explain demo (`CORTEX_V2.md` §19). Then #61 demo API origin, #65 thread extraction.
+**Target:** Demonstrable memory control plane (not scaffold-only APIs)
 
 ---
 
@@ -113,7 +113,7 @@ LinkedIn: linkedin.com/in/abhinaysai-kamineni
 | 6 | React dashboard + knowledge graph explorer | Week 3-4 | ✅ Done |
 | 7 | Live demo URL + README polish | Week 4 | ✅ Done |
 | **V1** | Organizational memory MVP (phases 0–7) | — | ✅ **Closed** |
-| V2 | Memory control plane (see `docs/CORTEX_V2.md`) | — | ⏳ Phase 0 next |
+| V2 | Memory control plane (see `docs/CORTEX_V2.md`) | — | ✅ Scaffold on main; ⏳ hot-path deepening |
 | ~~8–10~~ | Coverage / outcomes / elicitation / federation | — | Folded into V2 |
 
 ---

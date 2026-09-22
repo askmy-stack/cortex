@@ -649,3 +649,29 @@
 1. Merge Phase 0 PR; mark #67 done
 2. Then start V2 P0 #68 (Claim/Evidence data foundations) only
 3. Do not jump to Reliability Gate before Evidence + Temporal
+
+---
+
+## Session — 2026-09-22 — V2 close-the-loop hygiene
+**Duration:** ~20m
+**Phase:** V2 docs/issue hygiene (no feature code)
+
+### Built
+- Refreshed `docs/CURRENT_STATE.md` for post-#82–#91 reality (scaffold vs deepening)
+- Updated `CLAUDE.md` Current Phase + build table
+- Updated README V1/V2 honesty note + roadmap row
+- ACTIVE instruction: deepen hot path next; keep epic #78 until DoD
+- Attempted close of completed issues #33, #36, #67–#77
+
+### State at end
+- V2 modules remain on `main`; docs no longer claim Phase 0 / #68 as next
+- Remaining product work: hot-path wiring, signature demo, #61/#65/#63/#64
+
+### Decisions made
+- Document V2 as scaffold-on-main; do not claim control-plane DoD until §19 demo works
+
+### Next session starts with
+1. Merge this hygiene PR
+2. Wire Evidence/Firewall/Gate/coverage into write + `/query` + MCP inject
+3. Prove CORTEX_V2 §19 BLOCK + explain scenario
+
